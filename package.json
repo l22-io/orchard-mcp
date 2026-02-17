@@ -1,0 +1,45 @@
+{
+  "name": "apple-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for Apple Calendar, Mail, and Reminders on macOS using native EventKit",
+  "type": "module",
+  "bin": {
+    "apple-mcp": "./build/index.js"
+  },
+  "scripts": {
+    "build": "npm run build:swift && npm run build:ts",
+    "build:ts": "tsc && chmod 755 build/index.js",
+    "build:swift": "cd swift && swift build -c release",
+    "dev": "tsc --watch",
+    "start": "node build/index.js",
+    "lint": "tsc --noEmit",
+    "clean": "rm -rf build && cd swift && swift package clean"
+  },
+  "files": [
+    "build",
+    "swift/.build/release/apple-bridge"
+  ],
+  "keywords": [
+    "mcp",
+    "apple",
+    "calendar",
+    "mail",
+    "reminders",
+    "eventkit",
+    "macos",
+    "model-context-protocol"
+  ],
+  "author": "l22.io GmbH",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.24.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  }
+}
