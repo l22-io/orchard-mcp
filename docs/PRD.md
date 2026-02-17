@@ -64,8 +64,9 @@ Single binary (`apple-bridge`) with subcommands:
 - `apple-bridge calendars` -- list all calendars with account info
 - `apple-bridge events --start <ISO> --end <ISO> [--calendar <id>]` -- fetch events (recurring expanded)
 - `apple-bridge search <query> --start <ISO> --end <ISO>` -- search events by text
-- `apple-bridge reminders [--list <name>] [--due-within <range>]` -- fetch reminders (planned)
-- `apple-bridge reminder-lists` -- list reminder lists (planned)
+- `apple-bridge reminder-lists` -- list all reminder lists with account, color, item count
+- `apple-bridge reminders [--list <name>] [--filter incomplete|completed|overdue|dueToday|all] [--limit <n>]` -- fetch reminders with filters
+- `apple-bridge reminders-today` -- incomplete reminders due today + overdue across all lists
 - `apple-bridge mail-accounts` -- list mail accounts with mailboxes and unread counts
 - `apple-bridge mail-unread [--limit <n>]` -- unread summary per account with recent message headers
 - `apple-bridge mail-search --query <q> [--account <name>] [--mailbox <name>] [--limit <n>]` -- search messages by subject/sender
@@ -114,9 +115,9 @@ OS-level authentication.
 
 ### Reminders
 
-- `reminders.list_lists` -- List all reminder lists
-- `reminders.list_reminders` -- Reminders from a list, with filters (due today, overdue, completed, priority)
-- `reminders.today` -- Shortcut: reminders due today + overdue across all lists
+- `reminders.list_lists` -- List all reminder lists with name, account, color, item count
+- `reminders.list_reminders` -- Reminders from a list, with filters (incomplete, completed, overdue, dueToday, all). Returns: title, due date, priority, completion status, notes, list name
+- `reminders.today` -- Shortcut: incomplete reminders due today + overdue across all lists
 
 ### System
 
@@ -204,9 +205,14 @@ claude mcp add --scope user apple -- npx apple-mcp
 
 ### Phase 2: Reminders -- PLANNED
 
-- Swift CLI: `reminders`, `reminder-lists`
+- Swift CLI: `reminder-lists`, `reminders`, `reminders-today`
 - TypeScript MCP: `reminders.list_lists`, `reminders.list_reminders`, `reminders.today`
+- Pure EventKit (like Calendar) -- no AppleScript needed. Uses `requestFullAccessToReminders()` and `fetchReminders(matching:)`
+- `fetchReminders(matching:)` is callback-based; bridged to async via `withCheckedContinuation`
+- Filter support: incomplete (default), completed, overdue, dueToday, all
+- Each reminder returns: title, dueDate, priority (0-4), isCompleted, completionDate, notes, list name, hasRecurrence
 - Relevant for potential Todoist-to-Apple-Reminders migration
+- Read-only in v1; write operations (create/complete/delete) are post-v1
 
 ### Phase 3: Mail -- COMPLETE
 
