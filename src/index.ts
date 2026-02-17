@@ -1,5 +1,12 @@
 #!/usr/bin/env node
 
+// Handle `apple-mcp setup` subcommand before starting MCP server.
+if (process.argv[2] === "setup") {
+  const { runSetup } = await import("./setup.js");
+  await runSetup(process.argv.includes("--non-interactive"));
+  process.exit(0);
+}
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerCalendarTools } from "./tools/calendar.js";
