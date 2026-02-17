@@ -3,6 +3,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerCalendarTools } from "./tools/calendar.js";
+import { registerMailTools } from "./tools/mail.js";
 import { registerSystemTools } from "./tools/system.js";
 
 const server = new McpServer({
@@ -11,6 +12,7 @@ const server = new McpServer({
 });
 
 registerCalendarTools(server);
+registerMailTools(server);
 registerSystemTools(server);
 
 const transport = new StdioServerTransport();
