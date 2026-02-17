@@ -50,6 +50,25 @@ enum DoctorBridge {
             "granted": remStatus == .fullAccess
         ]
 
+        if remStatus == .notDetermined {
+            let granted = await RemindersBridge.requestAccess()
+            report["reminders"] = [
+                "status": granted ? "fullAccess" : "denied",
+                "granted": granted,
+                "note": "Permission was just requested."
+            ]
+        }
+
+        if remStatus == .fullAccess || remStatus == .notDetermined {
+            let store = EKEventStore()
+            _ = try? await store.requestFullAccessToReminders()
+            let lists = store.calendars(for: .reminder)
+            report["remindersSummary"] = [
+                "count": lists.count,
+                "lists": lists.map { $0.title }.sorted()
+            ]
+        }
+
         // Mail -- we can only check if osascript is available
         // Reason: Mail access is via AppleScript, no programmatic permission check exists.
         let mailCheck = checkMailAccess()
