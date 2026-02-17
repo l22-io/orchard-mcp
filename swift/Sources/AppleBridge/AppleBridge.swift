@@ -16,6 +16,9 @@ struct AppleBridge: AsyncParsableCommand {
             MailSearchCmd.self,
             MailMessage.self,
             MailFlagged.self,
+            ReminderLists.self,
+            RemindersCmd.self,
+            RemindersToday.self,
             Doctor.self
         ]
     )
@@ -146,6 +149,50 @@ struct MailFlagged: AsyncParsableCommand {
 
     func run() async throws {
         MailBridge.flagged(limit: limit)
+    }
+}
+
+// MARK: - Reminders Subcommands
+
+struct ReminderLists: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "reminder-lists",
+        abstract: "List all reminder lists with account and color."
+    )
+
+    func run() async throws {
+        await RemindersBridge.listLists()
+    }
+}
+
+struct RemindersCmd: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "reminders",
+        abstract: "List reminders with optional filters."
+    )
+
+    @Option(name: .long, help: "Filter to a specific list name")
+    var list: String?
+
+    @Option(name: .long, help: "Filter: incomplete (default), completed, overdue, dueToday, all")
+    var filter: String = "incomplete"
+
+    @Option(name: .long, help: "Max reminders to return (default: 50)")
+    var limit: Int = 50
+
+    func run() async throws {
+        await RemindersBridge.listReminders(listName: list, filter: filter, limit: limit)
+    }
+}
+
+struct RemindersToday: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "reminders-today",
+        abstract: "Incomplete reminders due today plus overdue across all lists."
+    )
+
+    func run() async throws {
+        await RemindersBridge.today()
     }
 }
 
