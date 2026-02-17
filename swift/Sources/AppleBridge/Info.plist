@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>io.l22.apple-bridge</string>
+    <key>CFBundleName</key>
+    <string>apple-bridge</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>apple-mcp needs access to your calendars to list events and search.</string>
+    <key>NSRemindersUsageDescription</key>
+    <string>apple-mcp needs access to your reminders to list and filter them.</string>
+</dict>
+</plist>
