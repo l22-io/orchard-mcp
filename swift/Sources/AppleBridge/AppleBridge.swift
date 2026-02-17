@@ -3,6 +3,28 @@ import Foundation
 
 @main
 struct AppleBridge: AsyncParsableCommand {
+    // Strip --output <path> from arguments before ArgumentParser sees them.
+    // This allows any subcommand to write to a file instead of stdout,
+    // needed for .app bundle mode on macOS Sequoia where stdout is not capturable.
+    static func main() async {
+        var args = Array(CommandLine.arguments.dropFirst())
+        if let idx = args.firstIndex(of: "--output"), idx + 1 < args.count {
+            JSONOutput.outputPath = args[idx + 1]
+            args.remove(at: idx + 1)
+            args.remove(at: idx)
+        }
+        do {
+            var command = try Self.parseAsRoot(args)
+            if var asyncCommand = command as? AsyncParsableCommand {
+                try await asyncCommand.run()
+            } else {
+                try command.run()
+            }
+        } catch {
+            Self.exit(withError: error)
+        }
+    }
+
     static let configuration = CommandConfiguration(
         commandName: "apple-bridge",
         abstract: "Native macOS bridge for Apple Calendar, Mail, and Reminders.",
