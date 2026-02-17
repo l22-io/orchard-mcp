@@ -12,7 +12,7 @@ No single server combines Calendar + Mail + Reminders with native framework acce
 
 ## Product Vision
 
-**apple-mcp** is a macOS-native MCP server that gives any MCP-compatible client (Warp, Claude Desktop, Claude Code, Cursor, etc.) structured access to Apple Calendar, Apple Mail, and Apple Reminders through native macOS frameworks.
+**apple-mcp** is a macOS-native MCP server that gives any MCP-compatible client (Warp, Claude Desktop, Claude Code, Cursor, etc.) structured access to Apple ecosystem apps and services through native macOS frameworks. Initial scope covers Calendar, Mail, and Reminders, expanding to Files, Safari, iWork apps (Pages/Keynote/Numbers), and iCloud Drive.
 
 It is designed to be:
 
@@ -235,12 +235,40 @@ claude mcp add --scope user apple -- npx apple-mcp
 - Homebrew tap for apple-bridge binary
 - Submit to MCP server registries (PulseMCP, Glama, LobeHub)
 
+### Phase 5: Files & Folders
+
+- Browse, list, and search files/folders on macOS via native APIs
+- Directory traversal, file metadata (size, dates, type, permissions)
+- Spotlight integration for fast search across indexed volumes
+- Read-only in v1; file operations (move, copy, rename) are post-v1
+
+### Phase 6: Safari Browser Control
+
+- List open tabs, windows, reading list
+- Get current page URL and title
+- Navigate, open/close tabs
+- Read page content (via AppleScript / ScriptingBridge)
+- History and bookmark access
+
+### Phase 7: Pages, Keynote, Numbers
+
+- List recent documents across all three iWork apps
+- Read document content and metadata (ScriptingBridge)
+- Export to PDF, plain text, or other supported formats
+- Slide/sheet/page enumeration for structured access
+
+### Phase 8: iCloud Drive
+
+- Browse and search iCloud Drive contents
+- File metadata, sharing status, download state (cloud vs local)
+- Read file contents for locally-cached items
+- Integration with Files & Folders (Phase 5) for unified file access
+
 ### Future (post-v1)
 
 - Write operations: create/update/delete events, complete reminders, send mail (with confirmation prompts)
 - **Apple Notes**: list, search, read notes (AppleScript / ScriptingBridge)
-- **Apple Pages/Numbers/Keynote**: list recent documents, read content/export, metadata access (ScriptingBridge)
-- Contacts integration
+- **Contacts**: list, search, read contacts
 - Streamable HTTP transport option (for remote scenarios)
 - Local management frontend (localhost web dashboard for accounts, permissions, calendar toggles)
 
