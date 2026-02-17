@@ -1,7 +1,10 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readFile, unlink, access } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { tmpdir } from "node:os";
 
 const execFileAsync = promisify(execFile);
 
@@ -19,6 +22,13 @@ function getBridgePath(): string {
   return resolve(__dirname, "..", "swift", ".build", "release", "apple-bridge");
 }
 
+function getAppBundlePath(): string {
+  if (process.env.APPLE_BRIDGE_APP) {
+    return process.env.APPLE_BRIDGE_APP;
+  }
+  return resolve(__dirname, "..", "swift", ".build", "AppleBridge.app");
+}
+
 export interface BridgeResponse {
   status: "ok" | "error";
   data?: unknown;
@@ -27,7 +37,8 @@ export interface BridgeResponse {
 
 /**
  * Execute an apple-bridge subcommand and return parsed JSON.
- * Throws on non-zero exit or JSON parse failure.
+ * Tries direct execution first; falls back to .app bundle mode
+ * (via `open`) when direct execution returns a permission error.
  */
 export async function callBridge(
   args: string[]
@@ -45,12 +56,84 @@ export async function callBridge(
     }
 
     const parsed = JSON.parse(stdout) as BridgeResponse;
+
+    // If the command returned a permission error, retry via .app bundle
+    if (
+      parsed.status === "error" &&
+      typeof parsed.error === "string" &&
+      parsed.error.includes("access denied")
+    ) {
+      return callBridgeViaApp(args);
+    }
+
     return parsed;
   } catch (err: unknown) {
     const msg =
       err instanceof Error ? err.message : "Unknown error calling apple-bridge";
     return { status: "error", error: msg };
   }
+}
+
+/**
+ * Launch apple-bridge via .app bundle using `open`, with output written to
+ * a temp file. Required on macOS Sequoia where CLI tools cannot obtain
+ * TCC permissions (e.g. Reminders) without an .app bundle context.
+ */
+async function callBridgeViaApp(
+  args: string[]
+): Promise<BridgeResponse> {
+  const appPath = getAppBundlePath();
+  const outputFile = resolve(tmpdir(), `apple-bridge-${randomUUID()}.json`);
+
+  try {
+    // Verify .app bundle exists
+    await access(appPath);
+  } catch {
+    return {
+      status: "error",
+      error: `AppleBridge.app not found at ${appPath}. Build with: swift build -c release then create the .app bundle.`,
+    };
+  }
+
+  return new Promise((resolvePromise) => {
+    const child = spawn("open", [
+      "-W", "-n", "-a", appPath,
+      "--args", ...args, "--output", outputFile,
+    ]);
+
+    const timeout = setTimeout(() => {
+      child.kill();
+      resolvePromise({
+        status: "error",
+        error: "apple-bridge .app bundle timed out after 30s",
+      });
+    }, 30_000);
+
+    child.on("close", async () => {
+      clearTimeout(timeout);
+      try {
+        const data = await readFile(outputFile, "utf-8");
+        await unlink(outputFile).catch(() => {});
+        const parsed = JSON.parse(data) as BridgeResponse;
+        resolvePromise(parsed);
+      } catch (err) {
+        await unlink(outputFile).catch(() => {});
+        const msg =
+          err instanceof Error
+            ? err.message
+            : "Failed to read .app bundle output";
+        resolvePromise({ status: "error", error: msg });
+      }
+    });
+
+    child.on("error", (err) => {
+      clearTimeout(timeout);
+      resolvePromise({
+        status: "error",
+        error: `Failed to launch .app bundle: ${err.message}`,
+      });
+    });
+  });
 }
 
 /**
