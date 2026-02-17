@@ -228,6 +228,85 @@ enum RemindersBridge {
         }
     }
 
+    static func completeReminder(id: String) async {
+        guard await requestAccess() else {
+            JSONOutput.error("Reminders access denied. Grant access in System Settings > Privacy & Security > Reminders.")
+            return
+        }
+
+        guard let reminder = store.calendarItem(withIdentifier: id) as? EKReminder else {
+            JSONOutput.error("Reminder not found with id: \(id)")
+            return
+        }
+
+        reminder.isCompleted = true
+
+        do {
+            try store.save(reminder, commit: true)
+            JSONOutput.success(formatReminder(reminder))
+        } catch {
+            JSONOutput.error("Failed to complete reminder: \(error.localizedDescription)")
+        }
+    }
+
+    static func deleteReminder(id: String) async {
+        guard await requestAccess() else {
+            JSONOutput.error("Reminders access denied. Grant access in System Settings > Privacy & Security > Reminders.")
+            return
+        }
+
+        guard let reminder = store.calendarItem(withIdentifier: id) as? EKReminder else {
+            JSONOutput.error("Reminder not found with id: \(id)")
+            return
+        }
+
+        let info = formatReminder(reminder)
+
+        do {
+            try store.remove(reminder, commit: true)
+            JSONOutput.success(info)
+        } catch {
+            JSONOutput.error("Failed to delete reminder: \(error.localizedDescription)")
+        }
+    }
+
+    static func deleteList(id: String, force: Bool) async {
+        guard await requestAccess() else {
+            JSONOutput.error("Reminders access denied. Grant access in System Settings > Privacy & Security > Reminders.")
+            return
+        }
+
+        guard let calendar = store.calendar(withIdentifier: id) else {
+            JSONOutput.error("Reminder list not found with id: \(id)")
+            return
+        }
+
+        if !force {
+            let predicate = store.predicateForReminders(in: [calendar])
+            let reminders = await withCheckedContinuation { continuation in
+                store.fetchReminders(matching: predicate) { result in
+                    continuation.resume(returning: result ?? [])
+                }
+            }
+            if !reminders.isEmpty {
+                JSONOutput.error("List '\(calendar.title)' has \(reminders.count) reminders. Use --force to delete anyway.")
+                return
+            }
+        }
+
+        let info: [String: Any] = [
+            "id": calendar.calendarIdentifier,
+            "title": calendar.title
+        ]
+
+        do {
+            try store.removeCalendar(calendar, commit: true)
+            JSONOutput.success(info)
+        } catch {
+            JSONOutput.error("Failed to delete list: \(error.localizedDescription)")
+        }
+    }
+
     // MARK: - Helpers
 
     private static func formatReminder(_ rem: EKReminder) -> [String: Any] {
