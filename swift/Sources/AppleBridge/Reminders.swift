@@ -152,6 +152,7 @@ enum RemindersBridge {
 
     private static func formatReminder(_ rem: EKReminder) -> [String: Any] {
         var dict: [String: Any] = [
+            "id": rem.calendarItemIdentifier,
             "title": rem.title ?? "(no title)",
             "isCompleted": rem.isCompleted,
             "list": rem.calendar.title,
