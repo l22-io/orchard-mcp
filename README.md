@@ -19,8 +19,11 @@ triggered automatically on first run.
 
 ## Status
 
-Phase 1 (Calendar + System) -- functional. Reminders (Phase 2) and Mail (Phase 3)
-coming in later phases. See `docs/PRD.md` for the full roadmap.
+- Phase 1 (Calendar + System) -- complete
+- Phase 3 (Mail) -- complete
+- Phase 2 (Reminders) and Phase 4 (Setup Wizard & Distribution) -- planned
+
+See `docs/PRD.md` for the full roadmap.
 
 ## Requirements
 
@@ -91,6 +94,14 @@ claude mcp add --scope user orchard -- node /path/to/apple-mcp/build/index.js
 - `calendar.today` -- Today's events across all calendars
 - `calendar.search` -- Search events by title/notes/location
 
+### Mail
+
+- `mail.list_accounts` -- List all mail accounts with mailboxes and unread counts
+- `mail.unread_summary` -- Unread count per account with recent message headers
+- `mail.search` -- Search messages by subject/sender across accounts
+- `mail.read_message` -- Get full message content by message ID
+- `mail.flagged` -- List flagged messages across all accounts
+
 ### System
 
 - `system.doctor` -- Check permissions, list accessible accounts
@@ -104,6 +115,20 @@ Two-layer design:
 
 The TypeScript layer calls the Swift binary via `child_process.execFile` and parses
 JSON responses. All subcommands return a `{"status": "ok"|"error", "data": ..., "error": ...}` envelope.
+
+### Swift CLI subcommands
+
+```
+apple-bridge calendars              List all calendars
+apple-bridge events                 Events in a date range (--start, --end, --calendar)
+apple-bridge search                 Search events by text (--start, --end)
+apple-bridge mail-accounts           List mail accounts and mailboxes
+apple-bridge mail-unread             Unread summary per account (--limit)
+apple-bridge mail-search             Search messages (--query, --account, --mailbox, --limit)
+apple-bridge mail-message            Full message content (--id)
+apple-bridge mail-flagged            Flagged messages (--limit)
+apple-bridge doctor                  Check permissions and accessible resources
+```
 
 ## Environment Variables
 

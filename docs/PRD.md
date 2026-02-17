@@ -63,11 +63,14 @@ Single binary (`apple-bridge`) with subcommands:
 
 - `apple-bridge calendars` -- list all calendars with account info
 - `apple-bridge events --start <ISO> --end <ISO> [--calendar <id>]` -- fetch events (recurring expanded)
-- `apple-bridge reminders [--list <name>] [--due-within <range>]` -- fetch reminders
-- `apple-bridge reminder-lists` -- list reminder lists
-- `apple-bridge mail-accounts` -- list mail accounts and mailboxes
-- `apple-bridge mail-search --account <name> [--mailbox <name>] [--subject <q>] [--sender <q>] [--unread] [--flagged] [--limit <n>]`
+- `apple-bridge search <query> --start <ISO> --end <ISO>` -- search events by text
+- `apple-bridge reminders [--list <name>] [--due-within <range>]` -- fetch reminders (planned)
+- `apple-bridge reminder-lists` -- list reminder lists (planned)
+- `apple-bridge mail-accounts` -- list mail accounts with mailboxes and unread counts
+- `apple-bridge mail-unread [--limit <n>]` -- unread summary per account with recent message headers
+- `apple-bridge mail-search --query <q> [--account <name>] [--mailbox <name>] [--limit <n>]` -- search messages by subject/sender
 - `apple-bridge mail-message --id <id>` -- get full message content
+- `apple-bridge mail-flagged [--limit <n>]` -- list flagged messages across accounts
 - `apple-bridge doctor` -- check permissions, list accessible accounts
 
 All subcommands output JSON envelope: `{"status": "ok"|"error", "data": ..., "error": ...}`
@@ -191,25 +194,27 @@ claude mcp add --scope user apple -- npx apple-mcp
 
 ## Development Phases
 
-### Phase 1: Calendar + System
+### Phase 1: Calendar + System -- COMPLETE
 
-- Swift CLI: `calendars`, `events`, `today`, `doctor`
+- Swift CLI: `calendars`, `events`, `search`, `doctor`
 - TypeScript MCP: `calendar.list_calendars`, `calendar.list_events`, `calendar.today`, `calendar.search`, `system.doctor`
 - Permission flow: first-run prompt for Calendar access
-- Test with Warp MCP and Claude Desktop
-- This phase alone unblocks calendar access for production use cases
+- Tested with Warp MCP and Claude Desktop
+- Unblocked calendar access for production use cases
 
-### Phase 2: Reminders
+### Phase 2: Reminders -- PLANNED
 
 - Swift CLI: `reminders`, `reminder-lists`
 - TypeScript MCP: `reminders.list_lists`, `reminders.list_reminders`, `reminders.today`
 - Relevant for potential Todoist-to-Apple-Reminders migration
 
-### Phase 3: Mail
+### Phase 3: Mail -- COMPLETE
 
-- Swift CLI: `mail-accounts`, `mail-search`, `mail-message`
+- Swift CLI: `mail-accounts`, `mail-unread`, `mail-search`, `mail-message`, `mail-flagged`
 - TypeScript MCP: `mail.list_accounts`, `mail.unread_summary`, `mail.search`, `mail.read_message`, `mail.flagged`
-- Mail access uses AppleScript via `osascript` (no native Mail framework for reading; ScriptingBridge for Mail.app is read-only and limited)
+- Mail access uses AppleScript via `osascript` with delimited output (`###`, `|||`, `^^^`, `::` separators) parsed in Swift
+- All scripts include `try` blocks for resilience across heterogeneous account types (IMAP, Exchange, iCloud)
+- Tested with 10+ real accounts across iCloud, Gmail, Google Workspace, Proton, and Exchange
 - Alternative: direct SQLite DB read (like errol-mail) for better performance, but requires Full Disk Access
 
 ### Phase 4: Setup Wizard & Distribution
@@ -237,6 +242,6 @@ claude mcp add --scope user apple -- npx apple-mcp
 
 1. **Package name**: `apple-mcp` (simple) vs `@l22-io/apple-mcp` (scoped) vs `macos-mcp`?
 ***REMOVED***
-3. **Mail access strategy**: AppleScript (simpler, needs Automation permission) vs SQLite DB (faster, needs Full Disk Access)? Could support both with a config flag.
+***REMOVED***
 2. **Binary distribution**: Ship pre-compiled arm64 binary in npm package? Or require users to compile Swift from source? (arm64-only initially since x86 Macs are rare now)
 ***REMOVED***
