@@ -41,6 +41,11 @@ struct AppleBridge: AsyncParsableCommand {
             ReminderLists.self,
             RemindersCmd.self,
             RemindersToday.self,
+            ReminderCreateList.self,
+            ReminderCreate.self,
+            ReminderComplete.self,
+            ReminderDelete.self,
+            ReminderDeleteList.self,
             Doctor.self
         ]
     )
@@ -215,6 +220,91 @@ struct RemindersToday: AsyncParsableCommand {
 
     func run() async throws {
         await RemindersBridge.today()
+    }
+}
+
+struct ReminderCreateList: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "reminder-create-list",
+        abstract: "Create a new reminder list."
+    )
+
+    @Option(name: .long, help: "Name for the new list")
+    var name: String
+
+    func run() async throws {
+        await RemindersBridge.createList(name: name)
+    }
+}
+
+struct ReminderCreate: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "reminder-create",
+        abstract: "Create a new reminder in a list."
+    )
+
+    @Option(name: .long, help: "List name to add the reminder to")
+    var list: String
+
+    @Option(name: .long, help: "Reminder title")
+    var title: String
+
+    @Option(name: .long, help: "Due date (ISO 8601, e.g. 2026-02-18 or 2026-02-18T10:00:00Z)")
+    var due: String?
+
+    @Option(name: .long, help: "Priority: 0=none, 1=high, 5=medium, 9=low (default: 0)")
+    var priority: Int = 0
+
+    @Option(name: .long, help: "Notes for the reminder")
+    var notes: String?
+
+    func run() async throws {
+        await RemindersBridge.createReminder(listName: list, title: title, dueDate: due, priority: priority, notes: notes)
+    }
+}
+
+struct ReminderComplete: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "reminder-complete",
+        abstract: "Mark a reminder as completed."
+    )
+
+    @Option(name: .long, help: "Reminder ID (from reminders command output)")
+    var id: String
+
+    func run() async throws {
+        await RemindersBridge.completeReminder(id: id)
+    }
+}
+
+struct ReminderDelete: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "reminder-delete",
+        abstract: "Delete a reminder."
+    )
+
+    @Option(name: .long, help: "Reminder ID (from reminders command output)")
+    var id: String
+
+    func run() async throws {
+        await RemindersBridge.deleteReminder(id: id)
+    }
+}
+
+struct ReminderDeleteList: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "reminder-delete-list",
+        abstract: "Delete a reminder list."
+    )
+
+    @Option(name: .long, help: "List ID (from reminder-lists command output)")
+    var id: String
+
+    @Flag(name: .long, help: "Delete even if the list has reminders")
+    var force: Bool = false
+
+    func run() async throws {
+        await RemindersBridge.deleteList(id: id, force: force)
     }
 }
 
