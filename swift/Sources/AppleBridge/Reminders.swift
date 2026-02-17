@@ -23,11 +23,28 @@ enum RemindersBridge {
         }
 
         let calendars = store.calendars(for: .reminder)
+
+        // Fetch all reminders to count per list
+        let predicate = store.predicateForReminders(in: nil)
+        let allReminders = await withCheckedContinuation { continuation in
+            store.fetchReminders(matching: predicate) { result in
+                continuation.resume(returning: result ?? [])
+            }
+        }
+
+        // Count reminders per calendar
+        var counts: [String: Int] = [:]
+        for rem in allReminders {
+            let calId = rem.calendar.calendarIdentifier
+            counts[calId, default: 0] += 1
+        }
+
         let result: [[String: Any]] = calendars.map { cal in
             var dict: [String: Any] = [
                 "id": cal.calendarIdentifier,
                 "title": cal.title,
-                "allowsModify": cal.allowsContentModifications
+                "allowsModify": cal.allowsContentModifications,
+                "itemCount": counts[cal.calendarIdentifier] ?? 0
             ]
             if let source = cal.source {
                 dict["account"] = source.title
