@@ -102,6 +102,12 @@ claude mcp add --scope user orchard -- node /path/to/apple-mcp/build/index.js
 - `mail.read_message` -- Get full message content by message ID
 - `mail.flagged` -- List flagged messages across all accounts
 
+### Reminders (planned)
+
+- `reminders.list_lists` -- List all reminder lists with account, color, item count
+- `reminders.list_reminders` -- Reminders from a list with filters (incomplete, completed, overdue, dueToday)
+- `reminders.today` -- Incomplete reminders due today + overdue across all lists
+
 ### System
 
 - `system.doctor` -- Check permissions, list accessible accounts
@@ -122,6 +128,9 @@ JSON responses. All subcommands return a `{"status": "ok"|"error", "data": ..., 
 apple-bridge calendars              List all calendars
 apple-bridge events                 Events in a date range (--start, --end, --calendar)
 apple-bridge search                 Search events by text (--start, --end)
+apple-bridge reminder-lists          List all reminder lists (planned)
+apple-bridge reminders               Reminders with filters (--list, --filter, --limit) (planned)
+apple-bridge reminders-today         Due today + overdue reminders (planned)
 apple-bridge mail-accounts           List mail accounts and mailboxes
 apple-bridge mail-unread             Unread summary per account (--limit)
 apple-bridge mail-search             Search messages (--query, --account, --mailbox, --limit)
