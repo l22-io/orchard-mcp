@@ -148,6 +148,86 @@ enum RemindersBridge {
         JSONOutput.success(result)
     }
 
+    static func createList(name: String) async {
+        guard await requestAccess() else {
+            JSONOutput.error("Reminders access denied. Grant access in System Settings > Privacy & Security > Reminders.")
+            return
+        }
+
+        let cal = EKCalendar(for: .reminder, eventStore: store)
+        cal.title = name
+
+        guard let source = store.defaultCalendarForNewReminders()?.source else {
+            JSONOutput.error("No reminder source available.")
+            return
+        }
+        cal.source = source
+
+        do {
+            try store.saveCalendar(cal, commit: true)
+            let result: [String: Any] = [
+                "id": cal.calendarIdentifier,
+                "title": cal.title,
+                "account": source.title,
+                "allowsModify": cal.allowsContentModifications
+            ]
+            JSONOutput.success(result)
+        } catch {
+            JSONOutput.error("Failed to create list: \(error.localizedDescription)")
+        }
+    }
+
+    static func createReminder(listName: String, title: String, dueDate: String?, priority: Int, notes: String?) async {
+        guard await requestAccess() else {
+            JSONOutput.error("Reminders access denied. Grant access in System Settings > Privacy & Security > Reminders.")
+            return
+        }
+
+        let matches = store.calendars(for: .reminder).filter {
+            $0.title.localizedCaseInsensitiveCompare(listName) == .orderedSame
+        }
+        guard let calendar = matches.first else {
+            JSONOutput.error("Reminder list not found: \(listName)")
+            return
+        }
+
+        let reminder = EKReminder(eventStore: store)
+        reminder.title = title
+        reminder.calendar = calendar
+        reminder.priority = priority
+
+        if let notes = notes {
+            reminder.notes = notes
+        }
+
+        if let dueDateStr = dueDate {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime]
+            var parsed: Date? = formatter.date(from: dueDateStr)
+            if parsed == nil {
+                let df = DateFormatter()
+                df.dateFormat = "yyyy-MM-dd"
+                df.timeZone = TimeZone.current
+                parsed = df.date(from: dueDateStr)
+            }
+            guard let due = parsed else {
+                JSONOutput.error("Invalid date format: \(dueDateStr). Use ISO 8601 (e.g. 2026-02-18T10:00:00Z or 2026-02-18).")
+                return
+            }
+            reminder.dueDateComponents = Calendar.current.dateComponents(
+                [.year, .month, .day, .hour, .minute, .second],
+                from: due
+            )
+        }
+
+        do {
+            try store.save(reminder, commit: true)
+            JSONOutput.success(formatReminder(reminder))
+        } catch {
+            JSONOutput.error("Failed to create reminder: \(error.localizedDescription)")
+        }
+    }
+
     // MARK: - Helpers
 
     private static func formatReminder(_ rem: EKReminder) -> [String: Any] {
