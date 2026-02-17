@@ -154,6 +154,14 @@ enum RemindersBridge {
             return
         }
 
+        let existing = store.calendars(for: .reminder).filter {
+            $0.title.localizedCaseInsensitiveCompare(name) == .orderedSame
+        }
+        if !existing.isEmpty {
+            JSONOutput.error("A reminder list named '\(name)' already exists.")
+            return
+        }
+
         let cal = EKCalendar(for: .reminder, eventStore: store)
         cal.title = name
 
@@ -239,6 +247,11 @@ enum RemindersBridge {
             return
         }
 
+        if reminder.isCompleted {
+            JSONOutput.error("Reminder is already completed.")
+            return
+        }
+
         reminder.isCompleted = true
 
         do {
@@ -289,7 +302,7 @@ enum RemindersBridge {
                 }
             }
             if !reminders.isEmpty {
-                JSONOutput.error("List '\(calendar.title)' has \(reminders.count) reminders. Use --force to delete anyway.")
+                JSONOutput.error("List '\(calendar.title)' has \(reminders.count) reminders. Set force=true to delete anyway.")
                 return
             }
         }
