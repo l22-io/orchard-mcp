@@ -1,5 +1,7 @@
 import Foundation
+import PDFKit
 import UniformTypeIdentifiers
+import Vision
 
 enum FilesBridge {
     private static var home: String {
@@ -239,6 +241,130 @@ enum FilesBridge {
             JSONOutput.success(results)
         } catch {
             JSONOutput.error("mdfind failed: \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: - Read (text extraction)
+
+    static func read(path: String) {
+        guard let resolved = validatePath(path) else {
+            JSONOutput.error("Path is outside home directory or does not exist: \(path)")
+            return
+        }
+
+        let url = URL(fileURLWithPath: resolved)
+        let fm = FileManager.default
+
+        guard fm.fileExists(atPath: resolved) else {
+            JSONOutput.error("File not found: \(path)")
+            return
+        }
+
+        let attrs = try? fm.attributesOfItem(atPath: resolved)
+        let byteSize = (attrs?[.size] as? Int64) ?? 0
+
+        let resourceValues = try? url.resourceValues(forKeys: [.contentTypeKey])
+        let contentType = resourceValues?.contentType
+
+        let maxTextBytes = 1_000_000
+        var text: String?
+        var method = "unknown"
+
+        if let ct = contentType {
+            if ct.conforms(to: .plainText) || ct.conforms(to: .sourceCode)
+                || ct.conforms(to: .shellScript) || ct.conforms(to: .json)
+                || ct.conforms(to: .xml) || ct.conforms(to: .yaml) {
+                text = try? String(contentsOfFile: resolved, encoding: .utf8)
+                method = "direct"
+            } else if ct.conforms(to: .pdf) {
+                text = extractPDF(url: url)
+                method = "pdfkit"
+            } else if ct.conforms(to: .image) {
+                text = extractImageText(url: url)
+                method = "vision-ocr"
+            } else {
+                text = extractViaTextutil(path: resolved)
+                method = "textutil"
+            }
+        } else {
+            text = try? String(contentsOfFile: resolved, encoding: .utf8)
+            if text != nil {
+                method = "direct"
+            } else {
+                text = extractViaTextutil(path: resolved)
+                method = "textutil"
+            }
+        }
+
+        guard var extractedText = text, !extractedText.isEmpty else {
+            JSONOutput.error("Could not extract text from file: \(url.lastPathComponent)")
+            return
+        }
+
+        var truncated = false
+        if extractedText.utf8.count > maxTextBytes {
+            extractedText = String(extractedText.prefix(maxTextBytes))
+            truncated = true
+        }
+
+        let result: [String: Any] = [
+            "path": resolved,
+            "contentType": contentType?.identifier ?? "unknown",
+            "method": method,
+            "text": extractedText,
+            "truncated": truncated,
+            "byteSize": byteSize,
+        ]
+        JSONOutput.success(result)
+    }
+
+    private static func extractPDF(url: URL) -> String? {
+        guard let doc = PDFDocument(url: url) else { return nil }
+        var text = ""
+        for i in 0..<doc.pageCount {
+            if let page = doc.page(at: i), let pageText = page.string {
+                text += pageText + "\n"
+            }
+        }
+        return text.isEmpty ? nil : text
+    }
+
+    private static func extractImageText(url: URL) -> String? {
+        guard let imageData = try? Data(contentsOf: url) else { return nil }
+
+        let requestHandler = VNImageRequestHandler(data: imageData, options: [:])
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .accurate
+
+        do {
+            try requestHandler.perform([request])
+            guard let observations = request.results else { return nil }
+            let text = observations
+                .compactMap { $0.topCandidates(1).first?.string }
+                .joined(separator: "\n")
+            return text.isEmpty ? nil : text
+        } catch {
+            return nil
+        }
+    }
+
+    private static func extractViaTextutil(path: String) -> String? {
+        let process = Process()
+        let pipe = Pipe()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/textutil")
+        process.arguments = ["-convert", "txt", "-stdout", path]
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+            guard process.terminationStatus == 0 else { return nil }
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let text = String(data: data, encoding: .utf8)
+            return (text?.isEmpty == true) ? nil : text
+        } catch {
+            return nil
         }
     }
 }
