@@ -20,8 +20,10 @@ triggered automatically on first run.
 ## Status
 
 - Phase 1 (Calendar + System) -- complete
-- Phase 3 (Mail) -- complete
-- Phase 2 (Reminders) and Phase 4 (Setup Wizard & Distribution) -- planned
+- Phase 2 (Reminders read + write) -- complete
+- Phase 3 (Mail read + create_draft) -- complete
+- Phase 4a (Setup Wizard) -- complete
+- Phase 4b (Distribution) -- in progress
 
 See `docs/PRD.md` for the full roadmap.
 
@@ -46,15 +48,14 @@ npm run build
 ./swift/.build/release/apple-bridge doctor
 ```
 
-### Setup wizard (planned)
+### Setup wizard
 
 ```bash
-npx apple-mcp setup
+node build/index.js setup
 ```
 
-The setup wizard will handle prerequisite checks, binary compilation or download,
-TCC permission grants, MCP client detection, and config generation. See `docs/PRD.md`
-for details.
+The setup wizard handles prerequisite checks, Swift binary compilation, .app bundle
+creation for TCC permissions (macOS Sequoia), and permission verification.
 
 ## MCP Client Configuration
 
@@ -101,12 +102,18 @@ claude mcp add --scope user orchard -- node /path/to/apple-mcp/build/index.js
 - `mail.search` -- Search messages by subject/sender across accounts
 - `mail.read_message` -- Get full message content by message ID
 - `mail.flagged` -- List flagged messages across all accounts
+- `mail.create_draft` -- Create a draft email (opens compose window for review)
 
-### Reminders (planned)
+### Reminders
 
 - `reminders.list_lists` -- List all reminder lists with account, color, item count
 - `reminders.list_reminders` -- Reminders from a list with filters (incomplete, completed, overdue, dueToday)
 - `reminders.today` -- Incomplete reminders due today + overdue across all lists
+- `reminders.create_list` -- Create a new reminder list
+- `reminders.create_reminder` -- Create a reminder with optional due date, priority, notes
+- `reminders.complete_reminder` -- Mark a reminder as completed
+- `reminders.delete_reminder` -- Delete a reminder
+- `reminders.delete_list` -- Delete a reminder list
 
 ### System
 
@@ -128,14 +135,20 @@ JSON responses. All subcommands return a `{"status": "ok"|"error", "data": ..., 
 apple-bridge calendars              List all calendars
 apple-bridge events                 Events in a date range (--start, --end, --calendar)
 apple-bridge search                 Search events by text (--start, --end)
-apple-bridge reminder-lists          List all reminder lists (planned)
-apple-bridge reminders               Reminders with filters (--list, --filter, --limit) (planned)
-apple-bridge reminders-today         Due today + overdue reminders (planned)
+apple-bridge reminder-lists          List all reminder lists
+apple-bridge reminders               Reminders with filters (--list, --filter, --limit)
+apple-bridge reminders-today         Due today + overdue reminders
+apple-bridge reminder-create-list    Create a new reminder list (--name)
+apple-bridge reminder-create         Create a reminder (--list, --title, --due, --priority, --notes)
+apple-bridge reminder-complete       Mark a reminder as completed (--id)
+apple-bridge reminder-delete         Delete a reminder (--id)
+apple-bridge reminder-delete-list    Delete a reminder list (--id, --force)
 apple-bridge mail-accounts           List mail accounts and mailboxes
 apple-bridge mail-unread             Unread summary per account (--limit)
 apple-bridge mail-search             Search messages (--query, --account, --mailbox, --limit)
 apple-bridge mail-message            Full message content (--id)
 apple-bridge mail-flagged            Flagged messages (--limit)
+apple-bridge mail-create-draft       Create a draft email (--to, --subject, --body, --cc, --bcc, --account)
 apple-bridge doctor                  Check permissions and accessible resources
 ```
 
