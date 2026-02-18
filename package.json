@@ -9,7 +9,9 @@
   "scripts": {
     "build": "npm run build:swift && npm run build:ts",
     "build:ts": "tsc && chmod 755 build/index.js",
-    "build:swift": "cd swift && swift build -c release",
+    "build:swift": "cd swift && swift build -c release -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __info_plist -Xlinker Sources/AppleBridge/Info.plist",
+    "postinstall": "bash scripts/postinstall.sh",
+    "prepublishOnly": "npm run build:ts",
     "dev": "tsc --watch",
     "start": "node build/index.js",
     "lint": "tsc --noEmit",
@@ -17,8 +19,12 @@
   },
   "files": [
     "build",
-    "swift/.build/release/apple-bridge"
+    "scripts/postinstall.sh",
+    "swift/Sources/",
+    "swift/Package.swift",
+    "swift/Package.resolved"
   ],
+  "os": ["darwin"],
   "keywords": [
     "mcp",
     "apple",
