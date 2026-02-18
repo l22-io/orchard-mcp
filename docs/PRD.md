@@ -72,6 +72,7 @@ Single binary (`apple-bridge`) with subcommands:
 - `apple-bridge mail-search --query <q> [--account <name>] [--mailbox <name>] [--limit <n>]` -- search messages by subject/sender
 - `apple-bridge mail-message --id <id>` -- get full message content
 - `apple-bridge mail-flagged [--limit <n>]` -- list flagged messages across accounts
+- `apple-bridge mail-create-draft --to <addrs> --subject <s> --body <b> [--cc <addrs>] [--bcc <addrs>] [--account <email>]` -- create draft email
 - `apple-bridge doctor` -- check permissions, list accessible accounts
 
 All subcommands output JSON envelope: `{"status": "ok"|"error", "data": ..., "error": ...}`
@@ -112,6 +113,7 @@ OS-level authentication.
 - `mail.search` -- Search messages by sender, subject, date range, read/unread, flagged. Returns headers only (no body) for performance.
 - `mail.read_message` -- Get full message content by ID
 - `mail.flagged` -- List flagged messages across all accounts
+- `mail.create_draft` -- Create a draft email with recipients, subject, body. Opens compose window for user review before sending.
 
 ### Reminders
 
@@ -203,21 +205,21 @@ claude mcp add --scope user apple -- npx apple-mcp
 - Tested with Warp MCP and Claude Desktop
 - Unblocked calendar access for production use cases
 
-### Phase 2: Reminders -- PLANNED
+### Phase 2: Reminders -- COMPLETE
 
-- Swift CLI: `reminder-lists`, `reminders`, `reminders-today`
-- TypeScript MCP: `reminders.list_lists`, `reminders.list_reminders`, `reminders.today`
+- Swift CLI: `reminder-lists`, `reminders`, `reminders-today`, `reminder-create-list`, `reminder-create`, `reminder-complete`, `reminder-delete`, `reminder-delete-list`
+- TypeScript MCP: `reminders.list_lists`, `reminders.list_reminders`, `reminders.today`, `reminders.create_list`, `reminders.create_reminder`, `reminders.complete_reminder`, `reminders.delete_reminder`, `reminders.delete_list`
 - Pure EventKit (like Calendar) -- no AppleScript needed. Uses `requestFullAccessToReminders()` and `fetchReminders(matching:)`
 - `fetchReminders(matching:)` is callback-based; bridged to async via `withCheckedContinuation`
 - Filter support: incomplete (default), completed, overdue, dueToday, all
 - Each reminder returns: title, dueDate, priority (0-4), isCompleted, completionDate, notes, list name, hasRecurrence
-- Relevant for potential Todoist-to-Apple-Reminders migration
-- Read-only in v1; write operations (create/complete/delete) are post-v1
+- Full CRUD: create lists, create reminders (with due date, priority, notes), complete, delete reminders/lists
+- macOS Sequoia TCC workaround: .app bundle mode for Reminders EventKit access
 
 ### Phase 3: Mail -- COMPLETE
 
-- Swift CLI: `mail-accounts`, `mail-unread`, `mail-search`, `mail-message`, `mail-flagged`
-- TypeScript MCP: `mail.list_accounts`, `mail.unread_summary`, `mail.search`, `mail.read_message`, `mail.flagged`
+- Swift CLI: `mail-accounts`, `mail-unread`, `mail-search`, `mail-message`, `mail-flagged`, `mail-create-draft`
+- TypeScript MCP: `mail.list_accounts`, `mail.unread_summary`, `mail.search`, `mail.read_message`, `mail.flagged`, `mail.create_draft`
 - Mail access uses AppleScript via `osascript` with delimited output (`###`, `|||`, `^^^`, `::` separators) parsed in Swift
 - All scripts include `try` blocks for resilience across heterogeneous account types (IMAP, Exchange, iCloud)
 - Tested with 10+ real accounts across iCloud, Gmail, Google Workspace, Proton, and Exchange
@@ -266,7 +268,7 @@ claude mcp add --scope user apple -- npx apple-mcp
 
 ### Future (post-v1)
 
-- Write operations: create/update/delete events, complete reminders, send mail (with confirmation prompts)
+- Write operations: create/update/delete events, send mail (with confirmation prompts). Reminders write ops and mail draft creation already implemented.
 - **Apple Notes**: list, search, read notes (AppleScript / ScriptingBridge)
 - **Contacts**: list, search, read contacts
 - Streamable HTTP transport option (for remote scenarios)
