@@ -176,4 +176,69 @@ enum FilesBridge {
 
         JSONOutput.success(info)
     }
+
+    // MARK: - Search (Spotlight)
+
+    static func search(query: String, kind: String?, scope: String?) {
+        let scopeDir = scope.flatMap({ validatePath($0) }) ?? home
+
+        var mdfindQuery = query
+        if let kind = kind {
+            let typeMap: [String: String] = [
+                "folder": "public.folder",
+                "image": "public.image",
+                "pdf": "com.adobe.pdf",
+                "document": "public.composite-content",
+                "audio": "public.audio",
+                "video": "public.movie",
+                "presentation": "public.presentation",
+                "spreadsheet": "public.spreadsheet",
+            ]
+            if let uti = typeMap[kind] {
+                mdfindQuery = "(\(query)) && (kMDItemContentTypeTree == '\(uti)')"
+            }
+        }
+
+        let process = Process()
+        let pipe = Pipe()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/mdfind")
+        process.arguments = ["-onlyin", scopeDir, mdfindQuery]
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            guard let output = String(data: data, encoding: .utf8) else {
+                JSONOutput.success([Any]())
+                return
+            }
+
+            let paths = output.components(separatedBy: "\n").filter { !$0.isEmpty }
+            var results: [[String: Any]] = []
+
+            for path in paths.prefix(50) {
+                let url = URL(fileURLWithPath: path)
+                var entry: [String: Any] = [
+                    "path": path,
+                    "name": url.lastPathComponent,
+                ]
+                do {
+                    let values = try url.resourceValues(forKeys: [
+                        .fileSizeKey, .contentModificationDateKey, .contentTypeKey
+                    ])
+                    if let size = values.fileSize { entry["size"] = size }
+                    if let modified = values.contentModificationDate { entry["modified"] = iso8601(modified) }
+                    if let type = values.contentType { entry["type"] = type.identifier }
+                } catch {}
+                results.append(entry)
+            }
+
+            JSONOutput.success(results)
+        } catch {
+            JSONOutput.error("mdfind failed: \(error.localizedDescription)")
+        }
+    }
 }
