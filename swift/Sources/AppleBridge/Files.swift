@@ -367,4 +367,102 @@ enum FilesBridge {
             return nil
         }
     }
+
+    // MARK: - File Operations
+
+    static func move(itemsJSON: String) {
+        guard let data = itemsJSON.data(using: .utf8),
+              let items = try? JSONSerialization.jsonObject(with: data) as? [[String: String]] else {
+            JSONOutput.error("Invalid JSON. Expected: [{\"source\": \"...\", \"destination\": \"...\"}]")
+            return
+        }
+
+        // Validate all paths first
+        for item in items {
+            guard let src = item["source"], let dst = item["destination"] else {
+                JSONOutput.error("Each item must have 'source' and 'destination' keys")
+                return
+            }
+            guard validatePath(src) != nil else {
+                JSONOutput.error("Source path outside home directory: \(src)")
+                return
+            }
+            guard validatePath(dst, mustExist: false) != nil else {
+                JSONOutput.error("Destination path outside home directory: \(dst)")
+                return
+            }
+        }
+
+        let fm = FileManager.default
+        var results: [[String: Any]] = []
+
+        for item in items {
+            let src = validatePath(item["source"]!)!
+            let dst = validatePath(item["destination"]!, mustExist: false)!
+            var result: [String: Any] = ["source": src, "destination": dst]
+            do {
+                try fm.moveItem(atPath: src, toPath: dst)
+                result["success"] = true
+            } catch {
+                result["success"] = false
+                result["error"] = error.localizedDescription
+            }
+            results.append(result)
+        }
+
+        JSONOutput.success(results)
+    }
+
+    static func copy(source: String, destination: String) {
+        guard let src = validatePath(source) else {
+            JSONOutput.error("Source path outside home directory or does not exist: \(source)")
+            return
+        }
+        guard let dst = validatePath(destination, mustExist: false) else {
+            JSONOutput.error("Destination path outside home directory: \(destination)")
+            return
+        }
+
+        do {
+            try FileManager.default.copyItem(atPath: src, toPath: dst)
+            JSONOutput.success(["source": src, "destination": dst, "success": true])
+        } catch {
+            JSONOutput.error("Copy failed: \(error.localizedDescription)")
+        }
+    }
+
+    static func createFolder(path: String) {
+        guard let resolved = validatePath(path, mustExist: false) else {
+            JSONOutput.error("Path is outside home directory: \(path)")
+            return
+        }
+
+        do {
+            try FileManager.default.createDirectory(atPath: resolved, withIntermediateDirectories: true)
+            JSONOutput.success(["path": resolved, "success": true])
+        } catch {
+            JSONOutput.error("Create folder failed: \(error.localizedDescription)")
+        }
+    }
+
+    static func trash(path: String) {
+        guard let resolved = validatePath(path) else {
+            JSONOutput.error("Path is outside home directory or does not exist: \(path)")
+            return
+        }
+
+        let url = URL(fileURLWithPath: resolved)
+        var trashURL: NSURL?
+
+        do {
+            try FileManager.default.trashItem(at: url, resultingItemURL: &trashURL)
+            var result: [String: Any] = ["path": resolved, "success": true]
+            if let trashPath = trashURL?.path {
+                result["trashPath"] = trashPath
+            }
+            JSONOutput.success(result)
+        } catch {
+            JSONOutput.error("Trash failed: \(error.localizedDescription)")
+        }
+    }
 }
