@@ -47,6 +47,14 @@ struct AppleBridge: AsyncParsableCommand {
             ReminderComplete.self,
             ReminderDelete.self,
             ReminderDeleteList.self,
+            FileList.self,
+            FileInfo.self,
+            FileSearchCmd.self,
+            FileRead.self,
+            FileMove.self,
+            FileCopy.self,
+            FileCreateFolder.self,
+            FileTrash.self,
             Doctor.self
         ]
     )
@@ -338,6 +346,135 @@ struct ReminderDeleteList: AsyncParsableCommand {
 
     func run() async throws {
         await RemindersBridge.deleteList(id: id, force: force)
+    }
+}
+
+// MARK: - Files & Folders Subcommands
+
+struct FileList: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "file-list",
+        abstract: "List directory contents with metadata."
+    )
+
+    @Option(name: .long, help: "Directory path (relative to ~ or absolute)")
+    var path: String = "."
+
+    @Flag(name: .long, help: "List recursively")
+    var recursive: Bool = false
+
+    @Option(name: .long, help: "Max recursion depth (default: 3)")
+    var depth: Int = 3
+
+    func run() throws {
+        FilesBridge.list(path: path, recursive: recursive, depth: depth)
+    }
+}
+
+struct FileInfo: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "file-info",
+        abstract: "Get detailed file or folder metadata."
+    )
+
+    @Option(name: .long, help: "File path (relative to ~ or absolute)")
+    var path: String
+
+    func run() throws {
+        FilesBridge.info(path: path)
+    }
+}
+
+struct FileSearchCmd: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "file-search",
+        abstract: "Search files using Spotlight."
+    )
+
+    @Option(name: .long, help: "Search query (Spotlight syntax)")
+    var query: String
+
+    @Option(name: .long, help: "Filter by kind: folder, image, pdf, document, audio, video, presentation, spreadsheet")
+    var kind: String?
+
+    @Option(name: .long, help: "Search scope directory (relative to ~ or absolute)")
+    var scope: String?
+
+    func run() throws {
+        FilesBridge.search(query: query, kind: kind, scope: scope)
+    }
+}
+
+struct FileRead: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "file-read",
+        abstract: "Read and extract text from a file."
+    )
+
+    @Option(name: .long, help: "File path (relative to ~ or absolute)")
+    var path: String
+
+    func run() throws {
+        FilesBridge.read(path: path)
+    }
+}
+
+struct FileMove: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "file-move",
+        abstract: "Move or rename files and folders."
+    )
+
+    @Option(name: .long, help: "JSON array of {\"source\": \"...\", \"destination\": \"...\"} pairs")
+    var items: String
+
+    func run() throws {
+        FilesBridge.move(itemsJSON: items)
+    }
+}
+
+struct FileCopy: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "file-copy",
+        abstract: "Copy a file or folder."
+    )
+
+    @Option(name: .long, help: "Source path")
+    var source: String
+
+    @Option(name: .long, help: "Destination path")
+    var dest: String
+
+    func run() throws {
+        FilesBridge.copy(source: source, destination: dest)
+    }
+}
+
+struct FileCreateFolder: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "file-create-folder",
+        abstract: "Create a directory with intermediate directories."
+    )
+
+    @Option(name: .long, help: "Directory path to create")
+    var path: String
+
+    func run() throws {
+        FilesBridge.createFolder(path: path)
+    }
+}
+
+struct FileTrash: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "file-trash",
+        abstract: "Move a file or folder to Trash."
+    )
+
+    @Option(name: .long, help: "File or folder path to trash")
+    var path: String
+
+    func run() throws {
+        FilesBridge.trash(path: path)
     }
 }
 
