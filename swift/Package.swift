@@ -19,7 +19,9 @@ let package = Package(
             exclude: ["Info.plist"],
             linkerSettings: [
                 .linkedFramework("EventKit"),
-                .linkedFramework("Foundation")
+                .linkedFramework("Foundation"),
+                .linkedFramework("PDFKit"),
+                .linkedFramework("Vision")
             ]
         )
     ]
