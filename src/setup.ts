@@ -112,6 +112,12 @@ async function checkPrereqs(total: number): Promise<boolean> {
 // Step 2: Build Swift
 async function buildSwift(total: number): Promise<boolean> {
   step(2, total, "Building Swift binary...");
+
+  if (existsSync(bridgeBin)) {
+    log("Binary already exists -- skipping build.");
+    return true;
+  }
+
   try {
     await run(
       "swift",
@@ -144,11 +150,16 @@ async function buildAppBundle(total: number): Promise<void> {
   step(3, total, "Building AppleBridge.app bundle...");
 
   const macosDir = resolve(appBundle, "Contents", "MacOS");
-  const contentsDir = resolve(appBundle, "Contents");
+  const binaryInApp = resolve(macosDir, "apple-bridge");
+
+  if (existsSync(binaryInApp)) {
+    log("App bundle already exists -- skipping build.");
+    return;
+  }
 
   mkdirSync(macosDir, { recursive: true });
   copyFileSync(bridgeBin, resolve(macosDir, "apple-bridge"));
-  copyFileSync(infoPlist, resolve(contentsDir, "Info.plist"));
+  copyFileSync(infoPlist, resolve(appBundle, "Contents", "Info.plist"));
 
   try {
     await run("codesign", ["--force", "--sign", "-", appBundle]);

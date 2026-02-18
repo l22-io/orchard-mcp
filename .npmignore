@@ -1,0 +1,9 @@
+# Development files
+swift/.build/
+docs/
+*.ts
+!*.d.ts
+tsconfig.json
+.github/
+.git/
+node_modules/
