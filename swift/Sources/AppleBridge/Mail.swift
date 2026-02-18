@@ -214,6 +214,51 @@ enum MailBridge {
         JSONOutput.success(messages)
     }
 
+    /// Create a draft email in Mail.app. Opens the compose window for user review.
+    static func createDraft(to: [String], cc: [String]?, bcc: [String]?, subject: String, body: String, account: String?) {
+        var recipientLines = ""
+        for addr in to {
+            recipientLines += "        make new to recipient with properties {address:\"\(escapeForAppleScript(addr))\"}\n"
+        }
+        if let ccAddrs = cc {
+            for addr in ccAddrs {
+                recipientLines += "        make new cc recipient with properties {address:\"\(escapeForAppleScript(addr))\"}\n"
+            }
+        }
+        if let bccAddrs = bcc {
+            for addr in bccAddrs {
+                recipientLines += "        make new bcc recipient with properties {address:\"\(escapeForAppleScript(addr))\"}\n"
+            }
+        }
+
+        let senderLine: String
+        if let acct = account {
+            senderLine = "    set sender of newMsg to \"\(escapeForAppleScript(acct))\""
+        } else {
+            senderLine = ""
+        }
+
+        let script = """
+        tell application "Mail"
+            set newMsg to make new outgoing message with properties {subject:"\(escapeForAppleScript(subject))", content:"\(escapeForAppleScript(body))", visible:true}
+            tell newMsg
+        \(recipientLines)    end tell
+        \(senderLine)
+        end tell
+        """
+
+        guard runAppleScript(script) != nil else { return }
+
+        var result: [String: Any] = [
+            "subject": subject,
+            "to": to
+        ]
+        if let cc = cc { result["cc"] = cc }
+        if let bcc = bcc { result["bcc"] = bcc }
+        if let account = account { result["account"] = account }
+        JSONOutput.success(result)
+    }
+
     // MARK: - AppleScript Execution
 
     private static func runAppleScript(_ script: String) -> String? {

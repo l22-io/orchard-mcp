@@ -38,6 +38,7 @@ struct AppleBridge: AsyncParsableCommand {
             MailSearchCmd.self,
             MailMessage.self,
             MailFlagged.self,
+            MailCreateDraft.self,
             ReminderLists.self,
             RemindersCmd.self,
             RemindersToday.self,
@@ -176,6 +177,38 @@ struct MailFlagged: AsyncParsableCommand {
 
     func run() async throws {
         MailBridge.flagged(limit: limit)
+    }
+}
+
+struct MailCreateDraft: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "mail-create-draft",
+        abstract: "Create a draft email in Mail.app."
+    )
+
+    @Option(name: .long, help: "Recipient email addresses (comma-separated)")
+    var to: String
+
+    @Option(name: .long, help: "CC email addresses (comma-separated)")
+    var cc: String?
+
+    @Option(name: .long, help: "BCC email addresses (comma-separated)")
+    var bcc: String?
+
+    @Option(name: .long, help: "Email subject")
+    var subject: String
+
+    @Option(name: .long, help: "Email body text")
+    var body: String
+
+    @Option(name: .long, help: "Sender email address (from mail-accounts)")
+    var account: String?
+
+    func run() async throws {
+        let toAddrs = to.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        let ccAddrs = cc?.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        let bccAddrs = bcc?.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        MailBridge.createDraft(to: toAddrs, cc: ccAddrs, bcc: bccAddrs, subject: subject, body: body, account: account)
     }
 }
 
