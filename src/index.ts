@@ -13,6 +13,7 @@ import { registerCalendarTools } from "./tools/calendar.js";
 import { registerMailTools } from "./tools/mail.js";
 import { registerReminderTools } from "./tools/reminders.js";
 import { registerSystemTools } from "./tools/system.js";
+import { registerFileTools } from "./tools/files.js";
 
 const server = new McpServer({
   name: "apple-mcp",
@@ -23,6 +24,7 @@ registerCalendarTools(server);
 registerMailTools(server);
 registerReminderTools(server);
 registerSystemTools(server);
+registerFileTools(server);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
