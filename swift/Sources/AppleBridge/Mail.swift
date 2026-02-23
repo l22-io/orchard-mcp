@@ -152,7 +152,11 @@ enum MailBridge {
             set attachList to {}
             repeat with att in every mail attachment of targetMsg
                 set attName to name of att
-                set attMime to MIME type of att
+                try
+                    set attMime to MIME type of att
+                on error
+                    set attMime to "application/octet-stream"
+                end try
                 set end of attachList to attName & ":::" & attMime
             end repeat
             return msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (msgRead as string) & "|||" & (msgFlagged as string) & "|||" & msgContent & "|||" & (msgTo as string) & "|||" & (msgCc as string) & "|||" & (my joinList(attachList, "^^^"))
@@ -331,10 +335,14 @@ enum MailBridge {
             end if
             set att to item \(asIndex) of attList
             set attName to name of att
-            set attMime to MIME type of att
-            set savePath to POSIX file ("\(escapedDir)/" & attName)
-            save att in savePath
-            return attName & ":::" & attMime & ":::" & ("\(escapedDir)/" & attName)
+            try
+                set attMime to MIME type of att
+            on error
+                set attMime to "application/octet-stream"
+            end try
+            set fullPath to "\(escapedDir)/" & attName
+            save att in (POSIX file fullPath)
+            return attName & ":::" & attMime & ":::" & fullPath
         end tell
         """
 
