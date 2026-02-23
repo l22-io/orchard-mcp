@@ -78,7 +78,7 @@ export function registerMailTools(server: McpServer): void {
 
   server.tool(
     "mail.read_message",
-    "Get the full content of an email message by its message ID (from mail.search or mail.unread_summary). Returns subject, sender, date, body, to, and cc fields.",
+    "Get the full content of an email message by its message ID (from mail.search or mail.unread_summary). Returns subject, sender, date, body, to, cc, and attachments (name, MIME type, index for use with mail.save_attachment).",
     {
       messageId: z
         .string()
@@ -155,6 +155,39 @@ export function registerMailTools(server: McpServer): void {
       const args = ["mail-flagged"];
       if (limit) {
         args.push("--limit", String(limit));
+      }
+      const data = await bridgeData(args);
+      return {
+        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+      };
+    }
+  );
+
+  server.tool(
+    "mail.save_attachment",
+    "Save an email attachment to disk. Use mail.read_message first to see available attachments and their indices. Returns the saved file path. Requires Mail.app to be running.",
+    {
+      messageId: z
+        .string()
+        .describe("Message ID (from mail.search or mail.read_message results)"),
+      index: z
+        .number()
+        .describe("Attachment index (0-based, from mail.read_message attachments array)"),
+      path: z
+        .string()
+        .optional()
+        .describe("Output directory (default: /tmp/apple-mcp-attachments)"),
+    },
+    async ({ messageId, index, path }) => {
+      const args = [
+        "mail-save-attachment",
+        "--id",
+        messageId,
+        "--index",
+        String(index),
+      ];
+      if (path) {
+        args.push("--path", path);
       }
       const data = await bridgeData(args);
       return {
