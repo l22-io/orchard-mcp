@@ -54,12 +54,18 @@ enum MailBridge {
             set resultList to {}
             repeat with acct in every account
                 set acctName to name of acct
+                set msgs to {}
+                set msgCount to 0
+                -- Try inbox keyword first; fall back to All Mail only for accounts
+                -- where inbox keyword fails (e.g. Proton Bridge).
                 try
                     set msgs to (every message of inbox of acct whose read status is false)
                     set msgCount to count of msgs
                 on error
-                    set msgs to {}
-                    set msgCount to 0
+                    try
+                        set msgs to (every message of mailbox "All Mail" of acct whose read status is false)
+                        set msgCount to count of msgs
+                    end try
                 end try
                 set maxItems to \(limit)
                 if msgCount < maxItems then set maxItems to msgCount
@@ -96,14 +102,40 @@ enum MailBridge {
 
     /// Search messages by subject/sender text across accounts.
     static func search(query: String, account: String?, mailbox: String?, limit: Int) {
-        let accountFilter = account.map { "of account \"\($0)\"" } ?? ""
-        let mailboxTarget = mailbox ?? "inbox"
+        let accountFilter = account.map { "of account \"\(escapeForAppleScript($0))\"" } ?? ""
+        // When mailbox is explicitly provided, use mailbox "name" syntax.
+        // When not provided, use inbox keyword (with fallback only when account is specified).
+        let mailboxTarget: String
+        if let mbox = mailbox {
+            mailboxTarget = "mailbox \"\(escapeForAppleScript(mbox))\""
+        } else {
+            mailboxTarget = "inbox"
+        }
+
+        // Only add fallback when account is specified -- without an account filter,
+        // "mailbox 'All Mail'" would search ALL accounts' All Mail and hang.
+        let fallbackBlock: String
+        if account != nil && mailbox == nil {
+            fallbackBlock = """
+                on error
+                    -- Fallback for accounts where inbox keyword fails (e.g. Proton Bridge)
+                    try
+                        set msgs to (every message of mailbox "All Mail" \(accountFilter) whose subject contains searchQuery or sender contains searchQuery)
+                    end try
+            """
+        } else {
+            fallbackBlock = ""
+        }
 
         let script = """
         tell application "Mail"
             set resultList to {}
             set searchQuery to "\(escapeForAppleScript(query))"
-            set msgs to (every message of \(mailboxTarget) \(accountFilter) whose subject contains searchQuery or sender contains searchQuery)
+            set msgs to {}
+            try
+                set msgs to (every message of \(mailboxTarget) \(accountFilter) whose subject contains searchQuery or sender contains searchQuery)
+            \(fallbackBlock)
+            end try
             set msgCount to count of msgs
             set maxItems to \(limit)
             if msgCount < maxItems then set maxItems to msgCount
@@ -140,7 +172,29 @@ enum MailBridge {
 
         let script = """
         tell application "Mail"
-            set targetMsg to first message of inbox whose message id is "\(escapedId)"
+            -- Find message: unified inbox covers normal accounts; per-account
+            -- fallback only for accounts where inbox keyword fails (Proton Bridge).
+            set targetMsg to missing value
+            try
+                set targetMsg to first message of inbox whose message id is "\(escapedId)"
+            end try
+            if targetMsg is missing value then
+                repeat with acct in every account
+                    try
+                        inbox of acct
+                        -- inbox keyword works: message was already searched via unified inbox
+                    on error
+                        -- inbox keyword fails (e.g. Proton Bridge): search All Mail
+                        try
+                            set targetMsg to first message of mailbox "All Mail" of acct whose message id is "\(escapedId)"
+                            exit repeat
+                        end try
+                    end try
+                end repeat
+            end if
+            if targetMsg is missing value then
+                return "ERROR_NOT_FOUND"
+            end if
             set msgSubject to subject of targetMsg
             set msgSender to sender of targetMsg
             set msgDate to date received of targetMsg as «class isot» as string
@@ -172,6 +226,10 @@ enum MailBridge {
         """
 
         guard let raw = runAppleScript(script) else { return }
+        if raw == "ERROR_NOT_FOUND" {
+            JSONOutput.error("Message not found. It may be in a mailbox not searched (try mail.search to locate it first).")
+            return
+        }
         let parts = raw.components(separatedBy: "|||")
         guard parts.count >= 6 else {
             JSONOutput.error("Unexpected response format from Mail.app")
@@ -328,7 +386,27 @@ enum MailBridge {
 
         let script = """
         tell application "Mail"
-            set targetMsg to first message of inbox whose message id is "\(escapedId)"
+            -- Find message: unified inbox covers normal accounts; per-account
+            -- fallback only for accounts where inbox keyword fails (Proton Bridge).
+            set targetMsg to missing value
+            try
+                set targetMsg to first message of inbox whose message id is "\(escapedId)"
+            end try
+            if targetMsg is missing value then
+                repeat with acct in every account
+                    try
+                        inbox of acct
+                    on error
+                        try
+                            set targetMsg to first message of mailbox "All Mail" of acct whose message id is "\(escapedId)"
+                            exit repeat
+                        end try
+                    end try
+                end repeat
+            end if
+            if targetMsg is missing value then
+                return "ERROR:::Message not found"
+            end if
             set attList to every mail attachment of targetMsg
             if (count of attList) < \(asIndex) then
                 return "ERROR:::Attachment index out of range. Message has " & ((count of attList) as string) & " attachments."
