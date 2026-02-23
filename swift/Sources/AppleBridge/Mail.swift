@@ -332,9 +332,9 @@ enum MailBridge {
             set att to item \(asIndex) of attList
             set attName to name of att
             set attMime to MIME type of att
-            set savePath to POSIX file "\(escapedDir)/" & attName
+            set savePath to POSIX file ("\(escapedDir)/" & attName)
             save att in savePath
-            return attName & ":::" & attMime & ":::" & POSIX path of savePath
+            return attName & ":::" & attMime & ":::" & ("\(escapedDir)/" & attName)
         end tell
         """
 
