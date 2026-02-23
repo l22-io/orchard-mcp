@@ -72,7 +72,7 @@ enum MailBridge {
                         set msgDate to date received of msg as «class isot» as string
                         set msgFlagged to flagged status of msg
                         set msgId to message id of msg
-                        set end of msgList to msgId & "|||" & msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (msgFlagged as string)
+                        set end of msgList to msgId & "|||" & msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (msgFlagged as string) & "|||" & ((count of mail attachments of msg) as string)
                     end try
                 end repeat
                 set end of resultList to acctName & ":::" & (msgCount as string) & ":::" & (my joinList(msgList, "^^^"))
@@ -115,7 +115,7 @@ enum MailBridge {
                 set msgDate to date received of msg as «class isot» as string
                 set msgRead to read status of msg
                 set msgFlagged to flagged status of msg
-                set end of resultList to msgId & "|||" & msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (msgRead as string) & "|||" & (msgFlagged as string)
+                set end of resultList to msgId & "|||" & msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (msgRead as string) & "|||" & (msgFlagged as string) & "|||" & ((count of mail attachments of msg) as string)
             end repeat
             return my joinList(resultList, "^^^")
         end tell
@@ -189,7 +189,7 @@ enum MailBridge {
                             set msgSubject to subject of msg
                             set msgSender to sender of msg
                             set msgDate to date received of msg as «class isot» as string
-                            set end of resultList to msgId & "|||" & msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (name of acct)
+                            set end of resultList to msgId & "|||" & msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (name of acct) & "|||" & ((count of mail attachments of msg) as string)
                             if (count of resultList) >= \(limit) then exit repeat
                         end repeat
                         if (count of resultList) >= \(limit) then exit repeat
@@ -363,6 +363,11 @@ enum MailBridge {
                     if fields.count > 4 {
                         msg["flagged"] = fields[4] == "true"
                     }
+                    if fields.count > 5 {
+                        let count = Int(fields[5].trimmingCharacters(in: .whitespaces)) ?? 0
+                        msg["attachmentCount"] = count
+                        msg["hasAttachments"] = count > 0
+                    }
                     return msg
                 }
                 account["recentUnread"] = messages
@@ -387,6 +392,11 @@ enum MailBridge {
             ]
             if fields.count > 4 { msg["read"] = fields[4] == "true" }
             if fields.count > 5 { msg["flagged"] = fields[5] == "true" }
+            if fields.count > 6 {
+                let count = Int(fields[6].trimmingCharacters(in: .whitespaces)) ?? 0
+                msg["attachmentCount"] = count
+                msg["hasAttachments"] = count > 0
+            }
             return msg
         }
     }
@@ -406,6 +416,11 @@ enum MailBridge {
                 "flagged": true
             ]
             if fields.count > 4 { msg["account"] = fields[4] }
+            if fields.count > 5 {
+                let count = Int(fields[5].trimmingCharacters(in: .whitespaces)) ?? 0
+                msg["attachmentCount"] = count
+                msg["hasAttachments"] = count > 0
+            }
             return msg
         }
     }
