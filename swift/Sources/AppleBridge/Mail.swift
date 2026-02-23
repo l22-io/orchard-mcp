@@ -149,8 +149,22 @@ enum MailBridge {
             set msgContent to content of targetMsg
             set msgTo to address of every to recipient of targetMsg
             set msgCc to address of every cc recipient of targetMsg
-            return msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (msgRead as string) & "|||" & (msgFlagged as string) & "|||" & msgContent & "|||" & (msgTo as string) & "|||" & (msgCc as string)
+            set attachList to {}
+            repeat with att in every mail attachment of targetMsg
+                set attName to name of att
+                set attMime to MIME type of att
+                set end of attachList to attName & ":::" & attMime
+            end repeat
+            return msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (msgRead as string) & "|||" & (msgFlagged as string) & "|||" & msgContent & "|||" & (msgTo as string) & "|||" & (msgCc as string) & "|||" & (my joinList(attachList, "^^^"))
         end tell
+
+        on joinList(theList, delim)
+            set oldDelim to AppleScript's text item delimiters
+            set AppleScript's text item delimiters to delim
+            set theResult to theList as string
+            set AppleScript's text item delimiters to oldDelim
+            return theResult
+        end joinList
         """
 
         guard let raw = runAppleScript(script) else { return }
@@ -171,6 +185,26 @@ enum MailBridge {
         ]
         if parts.count > 6 { message["to"] = parts[6] }
         if parts.count > 7 { message["cc"] = parts[7] }
+
+        if parts.count > 8 && !parts[8].isEmpty {
+            let attachStrings = parts[8].components(separatedBy: "^^^")
+            let attachments: [[String: Any]] = attachStrings.enumerated().compactMap { (idx, attStr) in
+                let fields = attStr.components(separatedBy: ":::")
+                guard fields.count >= 2 else { return nil }
+                return [
+                    "index": idx,
+                    "name": fields[0],
+                    "mimeType": fields[1]
+                ]
+            }
+            message["attachments"] = attachments
+            message["attachmentCount"] = attachments.count
+            message["hasAttachments"] = !attachments.isEmpty
+        } else {
+            message["attachments"] = [] as [[String: Any]]
+            message["attachmentCount"] = 0
+            message["hasAttachments"] = false
+        }
 
         JSONOutput.success(message)
     }
