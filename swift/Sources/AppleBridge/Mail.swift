@@ -295,6 +295,10 @@ enum MailBridge {
 
     /// Save a specific attachment from a message to disk.
     static func saveAttachment(messageId: String, index: Int, outputDir: String) {
+        guard index >= 0 else {
+            JSONOutput.error("Attachment index must be non-negative. Got \(index).")
+            return
+        }
         let escapedId = escapeForAppleScript(messageId)
         let resolvedDir: String
         if outputDir.hasPrefix("~") {

@@ -233,7 +233,7 @@ struct MailSaveAttachment: AsyncParsableCommand {
     @Option(name: .long, help: "Attachment index (0-based, from mail-message output)")
     var index: Int
 
-    @Option(name: .long, help: "Output directory (default: /tmp/apple-mcp-attachments)")
+    @Option(name: .long, help: "Output directory")
     var path: String = "/tmp/apple-mcp-attachments"
 
     func run() async throws {
