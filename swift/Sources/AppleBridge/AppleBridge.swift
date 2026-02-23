@@ -39,6 +39,7 @@ struct AppleBridge: AsyncParsableCommand {
             MailMessage.self,
             MailFlagged.self,
             MailCreateDraft.self,
+            MailSaveAttachment.self,
             ReminderLists.self,
             RemindersCmd.self,
             RemindersToday.self,
@@ -217,6 +218,26 @@ struct MailCreateDraft: AsyncParsableCommand {
         let ccAddrs = cc?.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }
         let bccAddrs = bcc?.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }
         MailBridge.createDraft(to: toAddrs, cc: ccAddrs, bcc: bccAddrs, subject: subject, body: body, account: account)
+    }
+}
+
+struct MailSaveAttachment: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "mail-save-attachment",
+        abstract: "Save a message attachment to disk."
+    )
+
+    @Option(name: .long, help: "Message ID (from mail-search or mail-unread)")
+    var id: String
+
+    @Option(name: .long, help: "Attachment index (0-based, from mail-message output)")
+    var index: Int
+
+    @Option(name: .long, help: "Output directory (default: /tmp/apple-mcp-attachments)")
+    var path: String = "/tmp/apple-mcp-attachments"
+
+    func run() async throws {
+        MailBridge.saveAttachment(messageId: id, index: index, outputDir: path)
     }
 }
 

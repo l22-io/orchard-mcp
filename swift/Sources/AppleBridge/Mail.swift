@@ -293,6 +293,69 @@ enum MailBridge {
         JSONOutput.success(result)
     }
 
+    /// Save a specific attachment from a message to disk.
+    static func saveAttachment(messageId: String, index: Int, outputDir: String) {
+        let escapedId = escapeForAppleScript(messageId)
+        let resolvedDir: String
+        if outputDir.hasPrefix("~") {
+            resolvedDir = (outputDir as NSString).expandingTildeInPath
+        } else {
+            resolvedDir = outputDir
+        }
+
+        // Create output directory if needed
+        let fm = FileManager.default
+        if !fm.fileExists(atPath: resolvedDir) {
+            do {
+                try fm.createDirectory(atPath: resolvedDir, withIntermediateDirectories: true)
+            } catch {
+                JSONOutput.error("Failed to create output directory: \(error.localizedDescription)")
+                return
+            }
+        }
+
+        let escapedDir = escapeForAppleScript(resolvedDir)
+        // AppleScript index is 1-based
+        let asIndex = index + 1
+
+        let script = """
+        tell application "Mail"
+            set targetMsg to first message of inbox whose message id is "\(escapedId)"
+            set attList to every mail attachment of targetMsg
+            if (count of attList) < \(asIndex) then
+                return "ERROR:::Attachment index out of range. Message has " & ((count of attList) as string) & " attachments."
+            end if
+            set att to item \(asIndex) of attList
+            set attName to name of att
+            set attMime to MIME type of att
+            set savePath to POSIX file "\(escapedDir)/" & attName
+            save att in savePath
+            return attName & ":::" & attMime & ":::" & POSIX path of savePath
+        end tell
+        """
+
+        guard let raw = runAppleScript(script) else { return }
+
+        if raw.hasPrefix("ERROR:::") {
+            let errorMsg = String(raw.dropFirst("ERROR:::".count))
+            JSONOutput.error(errorMsg)
+            return
+        }
+
+        let fields = raw.components(separatedBy: ":::")
+        guard fields.count >= 3 else {
+            JSONOutput.error("Unexpected response format from Mail.app")
+            return
+        }
+
+        let result: [String: Any] = [
+            "name": fields[0],
+            "mimeType": fields[1],
+            "path": fields[2]
+        ]
+        JSONOutput.success(result)
+    }
+
     // MARK: - AppleScript Execution
 
     private static func runAppleScript(_ script: String) -> String? {
