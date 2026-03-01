@@ -47,7 +47,7 @@ describe("tool registration", () => {
   let server: McpServer;
 
   before(() => {
-    server = new McpServer({ name: "apple-mcp", version: "0.3.0" });
+    server = new McpServer({ name: "orchard-mcp", version: "0.3.0" });
     registerCalendarTools(server);
     registerMailTools(server);
     registerReminderTools(server);

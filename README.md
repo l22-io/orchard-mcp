@@ -1,4 +1,4 @@
-# apple-mcp
+# orchard-mcp
 
 MCP server for Apple Calendar, Mail, Reminders, and Files on macOS using native frameworks.
 
@@ -8,10 +8,10 @@ native macOS frameworks. No cloud dependencies, no OAuth setup -- all data stays
 
 ## How it works
 
-apple-mcp reads from the local macOS data stores (EventKit for Calendar/Reminders,
+orchard-mcp reads from the local macOS data stores (EventKit for Calendar/Reminders,
 AppleScript for Mail) which are already populated by accounts configured in
 **System Settings > Internet Accounts**. The OS handles all authentication with Google,
-Microsoft, iCloud, etc. natively. apple-mcp never communicates with any remote service
+Microsoft, iCloud, etc. natively. orchard-mcp never communicates with any remote service
 and requires no OAuth client IDs, redirect URIs, or token management.
 
 The only permissions needed are macOS TCC grants (e.g. "Allow access to Calendars"),
@@ -36,8 +36,8 @@ See `docs/PRD.md` for the full roadmap.
 ## Install
 
 ```bash
-npm install -g @l22-io/apple-mcp
-apple-mcp setup
+npm install -g @l22-io/orchard-mcp
+orchard-mcp setup
 ```
 
 ## Setup
@@ -46,8 +46,8 @@ apple-mcp setup
 
 ```bash
 # Clone and build
-git clone git@github.com:l22-io/apple-mcp.git
-cd apple-mcp
+git clone git@github.com:l22-io/orchard-mcp.git
+cd orchard-mcp
 npm install
 npm run build
 
@@ -70,7 +70,7 @@ creation for TCC permissions (macOS Sequoia), and permission verification.
 
 Add as an MCP server in Warp settings with:
 ```json
-{"command": "node", "args": ["/path/to/apple-mcp/build/index.js"]}
+{"command": "node", "args": ["/path/to/orchard-mcp/build/index.js"]}
 ```
 
 ### Claude Desktop
@@ -81,7 +81,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "apple": {
       "command": "node",
-      "args": ["/path/to/apple-mcp/build/index.js"]
+      "args": ["/path/to/orchard-mcp/build/index.js"]
     }
   }
 }
@@ -90,7 +90,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ### Claude Code
 
 ```bash
-claude mcp add --scope user orchard -- node /path/to/apple-mcp/build/index.js
+claude mcp add --scope user orchard -- node /path/to/orchard-mcp/build/index.js
 ```
 
 ## Available Tools

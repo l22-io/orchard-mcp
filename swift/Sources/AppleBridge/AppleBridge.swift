@@ -234,7 +234,7 @@ struct MailSaveAttachment: AsyncParsableCommand {
     var index: Int
 
     @Option(name: .long, help: "Output directory")
-    var path: String = "/tmp/apple-mcp-attachments"
+    var path: String = "/tmp/orchard-mcp-attachments"
 
     func run() async throws {
         MailBridge.saveAttachment(messageId: id, index: index, outputDir: path)

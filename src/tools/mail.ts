@@ -176,7 +176,7 @@ export function registerMailTools(server: McpServer): void {
       path: z
         .string()
         .optional()
-        .describe("Output directory (default: /tmp/apple-mcp-attachments)"),
+        .describe("Output directory (default: /tmp/orchard-mcp-attachments)"),
     },
     async ({ messageId, index, path }) => {
       const args = [
