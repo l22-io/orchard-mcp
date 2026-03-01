@@ -1,9 +1,13 @@
 # Development files
 swift/.build/
 docs/
+src/
+tests/
 *.ts
 !*.d.ts
 tsconfig.json
 .github/
 .git/
+.claude/
+CLAUDE.md
 node_modules/

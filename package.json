@@ -1,7 +1,18 @@
 {
-  "name": "apple-mcp",
-  "version": "0.2.0",
-  "description": "MCP server for Apple Calendar, Mail, and Reminders on macOS using native EventKit",
+  "name": "@l22-io/apple-mcp",
+  "version": "0.3.0",
+  "description": "MCP server for Apple Calendar, Mail, Reminders, and Files on macOS using native EventKit",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/l22-io/apple-mcp.git"
+  },
+  "homepage": "https://github.com/l22-io/apple-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/l22-io/apple-mcp/issues"
+  },
   "type": "module",
   "bin": {
     "apple-mcp": "./build/index.js"
@@ -14,6 +25,7 @@
     "prepublishOnly": "npm run build:ts",
     "dev": "tsc --watch",
     "start": "node build/index.js",
+    "test": "tsx --test tests/*.test.ts",
     "lint": "tsc --noEmit",
     "clean": "rm -rf build && cd swift && swift package clean"
   },
@@ -46,6 +58,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   }
 }
