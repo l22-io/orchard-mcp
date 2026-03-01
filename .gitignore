@@ -5,3 +5,4 @@ swift/.build/
 *.js.map
 .DS_Store
 .claude/
+CLAUDE.md
