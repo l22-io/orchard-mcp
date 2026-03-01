@@ -1,10 +1,10 @@
 # apple-mcp
 
-MCP server for Apple Calendar, Mail, and Reminders on macOS using native EventKit.
+MCP server for Apple Calendar, Mail, Reminders, and Files on macOS using native frameworks.
 
 Gives any MCP-compatible client (Warp, Claude Desktop, Claude Code, Cursor) structured
-access to your local Apple Calendar, Apple Mail, and Apple Reminders through native
-macOS frameworks. No cloud dependencies, no OAuth setup -- all data stays local.
+access to your local Apple Calendar, Apple Mail, Apple Reminders, and filesystem through
+native macOS frameworks. No cloud dependencies, no OAuth setup -- all data stays local.
 
 ## How it works
 
@@ -32,6 +32,13 @@ See `docs/PRD.md` for the full roadmap.
 - macOS 14+ (Sonoma or later)
 - Swift 5.9+ (Xcode Command Line Tools)
 - Node.js 18+
+
+## Install
+
+```bash
+npm install -g @l22-io/apple-mcp
+apple-mcp setup
+```
 
 ## Setup
 
@@ -103,6 +110,7 @@ claude mcp add --scope user orchard -- node /path/to/apple-mcp/build/index.js
 - `mail.read_message` -- Get full message content by message ID
 - `mail.flagged` -- List flagged messages across all accounts
 - `mail.create_draft` -- Create a draft email (opens compose window for review)
+- `mail.save_attachment` -- Save an email attachment to disk by message ID and index
 
 ### Reminders
 
@@ -114,6 +122,17 @@ claude mcp add --scope user orchard -- node /path/to/apple-mcp/build/index.js
 - `reminders.complete_reminder` -- Mark a reminder as completed
 - `reminders.delete_reminder` -- Delete a reminder
 - `reminders.delete_list` -- Delete a reminder list
+
+### Files
+
+- `files.list` -- List directory contents with metadata
+- `files.info` -- Get detailed file metadata including Spotlight attributes
+- `files.search` -- Search files using macOS Spotlight
+- `files.read` -- Read/extract text from files (plain text, PDF, images via OCR, .docx/.rtf/.pages)
+- `files.move` -- Move or rename files and folders (supports batch operations)
+- `files.copy` -- Copy a file or folder
+- `files.create_folder` -- Create a new directory
+- `files.trash` -- Move a file or folder to Trash (reversible)
 
 ### System
 

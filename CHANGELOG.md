@@ -1,0 +1,35 @@
+# Changelog
+
+## [0.3.0] - 2026-03-01
+
+### Added
+- Files tools: `files.list`, `files.info`, `files.search`, `files.read`, `files.move`, `files.copy`, `files.create_folder`, `files.trash`
+- `mail.save_attachment` tool for saving email attachments to disk
+- Setup wizard (`apple-mcp setup`) for guided first-run configuration
+- .app bundle fallback for macOS Sequoia TCC permissions
+- Automated test suite (tool registration + bridge contract)
+- LICENSE (MIT)
+- npm package scoped as `@l22-io/apple-mcp`
+
+### Changed
+- Package name from `apple-mcp` to `@l22-io/apple-mcp`
+- `mail.read_message` now returns attachment metadata (name, MIME type, index)
+
+### Fixed
+- MIME type error handling in mail attachment operations
+- POSIX file path concatenation in `saveAttachment`
+
+## [0.2.0] - 2025-12-15
+
+### Added
+- Mail tools: `mail.list_accounts`, `mail.unread_summary`, `mail.search`, `mail.read_message`, `mail.flagged`, `mail.create_draft`
+- Reminders tools: full CRUD (`list_lists`, `list_reminders`, `today`, `create_list`, `create_reminder`, `complete_reminder`, `delete_reminder`, `delete_list`)
+- `system.doctor` diagnostic tool
+
+## [0.1.0] - 2025-10-01
+
+### Added
+- Calendar tools: `calendar.list_calendars`, `calendar.list_events`, `calendar.today`, `calendar.search`
+- Swift bridge architecture (TypeScript MCP server + native Swift CLI)
+- EventKit integration for Calendar and Reminders
+- AppleScript integration for Mail

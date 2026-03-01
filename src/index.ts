@@ -17,7 +17,7 @@ import { registerFileTools } from "./tools/files.js";
 
 const server = new McpServer({
   name: "apple-mcp",
-  version: "0.2.0",
+  version: "0.3.0",
 });
 
 registerCalendarTools(server);
