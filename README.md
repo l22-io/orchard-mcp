@@ -14,6 +14,11 @@ AppleScript for Mail) which are already populated by accounts configured in
 Microsoft, iCloud, etc. natively. orchard-mcp never communicates with any remote service
 and requires no OAuth client IDs, redirect URIs, or token management.
 
+**Privacy note:** orchard-mcp itself sends no data anywhere. However, the MCP client
+(e.g. Claude, Cursor) that invokes tools will receive the returned data (calendar events,
+emails, reminders, file contents) and send it to its LLM provider as part of the
+conversation context. Be mindful of what you ask the LLM to access.
+
 The only permissions needed are macOS TCC grants (e.g. "Allow access to Calendars"),
 triggered automatically on first run.
 
