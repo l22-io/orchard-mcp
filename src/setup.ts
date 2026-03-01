@@ -53,7 +53,7 @@ async function run(
 
 export async function runSetup(nonInteractive: boolean): Promise<void> {
   const total = 6;
-  process.stdout.write("\napple-mcp setup\n================\n");
+  process.stdout.write("\norchard-mcp setup\n================\n");
 
   const ok1 = await checkPrereqs(total);
   if (!ok1) process.exit(1);

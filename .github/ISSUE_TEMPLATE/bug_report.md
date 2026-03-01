@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a problem with apple-mcp
+about: Report a problem with orchard-mcp
 title: ''
 labels: bug
 assignees: ''
@@ -12,7 +12,7 @@ assignees: ''
 - Xcode CLI tools version (`xcode-select -p`):
 - MCP client (Claude Desktop / Claude Code / Warp / other):
 
-**`apple-mcp setup` or `system.doctor` output**
+**`orchard-mcp setup` or `system.doctor` output**
 ```
 Paste output here
 ```

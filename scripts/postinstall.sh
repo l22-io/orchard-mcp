@@ -10,24 +10,24 @@ INFO_PLIST="$SWIFT_DIR/Sources/AppleBridge/Info.plist"
 
 # Skip if binary already exists (e.g. development environment)
 if [ -f "$BRIDGE_BIN" ] && [ -d "$APP_BUNDLE" ]; then
-    echo "[apple-mcp] Swift binary and .app bundle already exist, skipping build."
+    echo "[orchard-mcp] Swift binary and .app bundle already exist, skipping build."
     exit 0
 fi
 
 # Check for macOS
 if [ "$(uname)" != "Darwin" ]; then
-    echo "[apple-mcp] macOS required. Skipping Swift build."
+    echo "[orchard-mcp] macOS required. Skipping Swift build."
     exit 0
 fi
 
 # Check for Swift
 if ! command -v swift &> /dev/null; then
-    echo "[apple-mcp] Swift not found. Install Xcode Command Line Tools: xcode-select --install"
-    echo "[apple-mcp] Then run: apple-mcp setup"
+    echo "[orchard-mcp] Swift not found. Install Xcode Command Line Tools: xcode-select --install"
+    echo "[orchard-mcp] Then run: orchard-mcp setup"
     exit 0
 fi
 
-echo "[apple-mcp] Building Swift binary..."
+echo "[orchard-mcp] Building Swift binary..."
 cd "$SWIFT_DIR"
 swift build -c release \
     -Xlinker -sectcreate \
@@ -35,10 +35,10 @@ swift build -c release \
     -Xlinker __info_plist \
     -Xlinker Sources/AppleBridge/Info.plist
 
-echo "[apple-mcp] Building AppleBridge.app bundle..."
+echo "[orchard-mcp] Building AppleBridge.app bundle..."
 mkdir -p "$APP_BUNDLE/Contents/MacOS"
 cp "$BRIDGE_BIN" "$APP_BUNDLE/Contents/MacOS/apple-bridge"
 cp "$INFO_PLIST" "$APP_BUNDLE/Contents/"
 codesign --force --sign - "$APP_BUNDLE"
 
-echo "[apple-mcp] Build complete. Run 'apple-mcp setup' to configure permissions."
+echo "[orchard-mcp] Build complete. Run 'orchard-mcp setup' to configure permissions."
