@@ -1,5 +1,5 @@
 {
-  "name": "@l22-io/apple-mcp",
+  "name": "@l22-io/orchard-mcp",
   "version": "0.3.0",
   "description": "MCP server for Apple Calendar, Mail, Reminders, and Files on macOS using native EventKit",
   "publishConfig": {
@@ -7,15 +7,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/l22-io/apple-mcp.git"
+    "url": "git+https://github.com/l22-io/orchard-mcp.git"
   },
-  "homepage": "https://github.com/l22-io/apple-mcp#readme",
+  "homepage": "https://github.com/l22-io/orchard-mcp#readme",
   "bugs": {
-    "url": "https://github.com/l22-io/apple-mcp/issues"
+    "url": "https://github.com/l22-io/orchard-mcp/issues"
   },
   "type": "module",
   "bin": {
-    "apple-mcp": "./build/index.js"
+    "orchard-mcp": "./build/index.js"
   },
   "scripts": {
     "build": "npm run build:swift && npm run build:ts",

@@ -5,14 +5,14 @@
 ### Added
 - Files tools: `files.list`, `files.info`, `files.search`, `files.read`, `files.move`, `files.copy`, `files.create_folder`, `files.trash`
 - `mail.save_attachment` tool for saving email attachments to disk
-- Setup wizard (`apple-mcp setup`) for guided first-run configuration
+- Setup wizard (`orchard-mcp setup`) for guided first-run configuration
 - .app bundle fallback for macOS Sequoia TCC permissions
 - Automated test suite (tool registration + bridge contract)
 - LICENSE (MIT)
-- npm package scoped as `@l22-io/apple-mcp`
+- npm package scoped as `@l22-io/orchard-mcp`
 
 ### Changed
-- Package name from `apple-mcp` to `@l22-io/apple-mcp`
+- Package name from `apple-mcp` to `@l22-io/orchard-mcp`
 - `mail.read_message` now returns attachment metadata (name, MIME type, index)
 
 ### Fixed

@@ -9,8 +9,8 @@
     <key>CFBundleExecutable</key>
     <string>apple-bridge</string>
     <key>NSCalendarsUsageDescription</key>
-    <string>apple-mcp needs access to your calendars to list events and search.</string>
+    <string>orchard-mcp needs access to your calendars to list events and search.</string>
     <key>NSRemindersUsageDescription</key>
-    <string>apple-mcp needs access to your reminders to list and filter them.</string>
+    <string>orchard-mcp needs access to your reminders to list and filter them.</string>
 </dict>
 </plist>

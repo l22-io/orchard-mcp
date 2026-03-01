@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// Handle `apple-mcp setup` subcommand before starting MCP server.
+// Handle `orchard-mcp setup` subcommand before starting MCP server.
 if (process.argv[2] === "setup") {
   const { runSetup } = await import("./setup.js");
   await runSetup(process.argv.includes("--non-interactive"));
@@ -16,7 +16,7 @@ import { registerSystemTools } from "./tools/system.js";
 import { registerFileTools } from "./tools/files.js";
 
 const server = new McpServer({
-  name: "apple-mcp",
+  name: "orchard-mcp",
   version: "0.3.0",
 });
 
@@ -30,4 +30,4 @@ const transport = new StdioServerTransport();
 await server.connect(transport);
 
 // Reason: stderr only -- stdout is reserved for JSON-RPC in stdio transport.
-console.error("[apple-mcp] Server started via stdio transport.");
+console.error("[orchard-mcp] Server started via stdio transport.");

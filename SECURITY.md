@@ -9,7 +9,7 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in apple-mcp, please report it responsibly:
+If you discover a security vulnerability in orchard-mcp, please report it responsibly:
 
 1. **Do not** open a public GitHub issue.
 2. Email **security@l22.io** with a description of the vulnerability.
@@ -19,7 +19,7 @@ We will acknowledge your report within 48 hours and aim to release a fix within 
 
 ## Scope
 
-apple-mcp runs locally and accesses macOS data stores (Calendar, Mail, Reminders, filesystem) through native frameworks. It does not communicate with remote services. Security concerns typically involve:
+orchard-mcp runs locally and accesses macOS data stores (Calendar, Mail, Reminders, filesystem) through native frameworks. It does not communicate with remote services. Security concerns typically involve:
 
 - Unintended data exposure through MCP tool responses
 - Path traversal in file operations (all paths are validated against home directory)
