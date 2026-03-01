@@ -2,11 +2,7 @@
 
 ## Problem
 
-LLM agents (Claude, Warp, Cursor, etc.) running on macOS have no reliable, unified way to access Apple Calendar, Mail, and Reminders. Current options are:
-
-
-
-
+LLM agents (Claude, Warp, Cursor, etc.) running on macOS have no reliable, unified way to access Apple Calendar, Mail, and Reminders. Existing MCP servers typically cover only one app (Calendar or Mail, not both), rely on AppleScript (which is fragile for recurring events and requires per-app Automation permissions), or require Full Disk Access to read local databases.
 
 No single server combines Calendar + Mail + Reminders with native framework access in a production-quality, distributable package.
 
@@ -20,20 +16,6 @@ It is designed to be:
 - **Universal**: Works from any MCP client via stdio transport -- no per-client permission configuration
 - **Distributable**: Installable via npm (`npx orchard-mcp`) with a compiled Swift helper binary
 - **Privacy-first**: Runs entirely locally, no cloud dependencies, no data leaves the machine
-
-## Architecture
-
-
-
-
-
-
-
-
-
-
-
-
 
 ## Architecture
 
@@ -94,7 +76,7 @@ The only permissions orchard-mcp needs are macOS TCC (Transparency, Consent, and
 
 This avoids the complexity of directly integrating with Google Calendar API or
 Microsoft Graph directly -- those require OAuth client IDs, redirect URIs, token refresh,
-and managing credentials per provider. orchard-mcp avoids all of that by piggybacking on
+and managing credentials per provider. orchard-mcp sidesteps all of that by piggybacking on
 OS-level authentication.
 
 ## MCP Tools (v1 scope)
@@ -276,8 +258,5 @@ claude mcp add --scope user orchard -- npx @l22-io/orchard-mcp
 
 ## Open Questions
 
-***REMOVED***
-***REMOVED***
-***REMOVED***
+1. **Mail access strategy**: AppleScript chosen for v1 (simpler, needs Automation permission). SQLite DB (faster, needs Full Disk Access) could be added as alternative with a config flag.
 2. **Binary distribution**: Ship pre-compiled arm64 binary in npm package? Or require users to compile Swift from source? (arm64-only initially since x86 Macs are rare now)
-***REMOVED***
