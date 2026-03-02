@@ -22,7 +22,7 @@
     "build:ts": "tsc && chmod 755 build/index.js",
     "build:swift": "cd swift && swift build -c release -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __info_plist -Xlinker Sources/AppleBridge/Info.plist",
     "postinstall": "bash scripts/postinstall.sh",
-    "prepublishOnly": "npm run build:ts",
+    "prepublishOnly": "npm run build:ts && bash scripts/prepublish.sh",
     "dev": "tsc --watch",
     "start": "node build/index.js",
     "test": "tsx --test tests/*.test.ts",
@@ -32,9 +32,8 @@
   "files": [
     "build",
     "scripts/postinstall.sh",
-    "swift/Sources/",
-    "swift/Package.swift",
-    "swift/Package.resolved"
+    "swift/.build/AppleBridge.app",
+    "swift/Sources/AppleBridge/Info.plist"
   ],
   "os": ["darwin"],
   "keywords": [
