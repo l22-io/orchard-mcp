@@ -3,42 +3,19 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-SWIFT_DIR="$PROJECT_ROOT/swift"
-BRIDGE_BIN="$SWIFT_DIR/.build/release/apple-bridge"
-APP_BUNDLE="$SWIFT_DIR/.build/AppleBridge.app"
-INFO_PLIST="$SWIFT_DIR/Sources/AppleBridge/Info.plist"
+APP_BUNDLE="$PROJECT_ROOT/swift/.build/AppleBridge.app"
 
-# Skip if binary already exists (e.g. development environment)
-if [ -f "$BRIDGE_BIN" ] && [ -d "$APP_BUNDLE" ]; then
-    echo "[orchard-mcp] Swift binary and .app bundle already exist, skipping build."
-    exit 0
-fi
-
-# Check for macOS
+# Skip on non-macOS (shouldn't happen due to os field, but be safe)
 if [ "$(uname)" != "Darwin" ]; then
-    echo "[orchard-mcp] macOS required. Skipping Swift build."
+    echo "[orchard-mcp] macOS required. Skipping postinstall."
     exit 0
 fi
 
-# Check for Swift
-if ! command -v swift &> /dev/null; then
-    echo "[orchard-mcp] Swift not found. Install Xcode Command Line Tools: xcode-select --install"
-    echo "[orchard-mcp] Then run: orchard-mcp setup"
-    exit 0
+# Re-sign the .app bundle (ad-hoc signatures may not survive npm packaging)
+if [ -d "$APP_BUNDLE" ]; then
+    echo "[orchard-mcp] Codesigning AppleBridge.app..."
+    codesign --force --sign - "$APP_BUNDLE" 2>/dev/null || true
+    echo "[orchard-mcp] Ready. Run 'orchard-mcp setup' to configure permissions."
+else
+    echo "[orchard-mcp] Warning: AppleBridge.app not found. Run 'orchard-mcp setup' to build it."
 fi
-
-echo "[orchard-mcp] Building Swift binary..."
-cd "$SWIFT_DIR"
-swift build -c release \
-    -Xlinker -sectcreate \
-    -Xlinker __TEXT \
-    -Xlinker __info_plist \
-    -Xlinker Sources/AppleBridge/Info.plist
-
-echo "[orchard-mcp] Building AppleBridge.app bundle..."
-mkdir -p "$APP_BUNDLE/Contents/MacOS"
-cp "$BRIDGE_BIN" "$APP_BUNDLE/Contents/MacOS/apple-bridge"
-cp "$INFO_PLIST" "$APP_BUNDLE/Contents/"
-codesign --force --sign - "$APP_BUNDLE"
-
-echo "[orchard-mcp] Build complete. Run 'orchard-mcp setup' to configure permissions."

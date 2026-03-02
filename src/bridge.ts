@@ -18,8 +18,8 @@ function getBridgePath(): string {
   if (process.env.APPLE_BRIDGE_BIN) {
     return process.env.APPLE_BRIDGE_BIN;
   }
-  // Default: relative to project root (one level up from build/)
-  return resolve(__dirname, "..", "swift", ".build", "release", "apple-bridge");
+  // Default: use the binary inside the .app bundle (one level up from build/)
+  return resolve(__dirname, "..", "swift", ".build", "AppleBridge.app", "Contents", "MacOS", "apple-bridge");
 }
 
 function getAppBundlePath(): string {
