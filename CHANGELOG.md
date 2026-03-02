@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.1] - 2026-03-02
+
+### Changed
+- Ship prebuilt universal binary (arm64 + x86_64) in npm package -- no Swift or Xcode required to install
+- Postinstall now only codesigns the .app bundle instead of compiling Swift from source
+- Updated MCP client configuration examples to use `npx @l22-io/orchard-mcp`
+
+### Added
+- GitHub Actions CI workflow (lint, build, test)
+- SECURITY.md with GitHub private vulnerability reporting
+- Issue template config (blank issues disabled, Discussions link)
+- `scripts/prepublish.sh` for building universal binary at publish time
+
 ## [0.3.0] - 2026-03-01
 
 ### Added

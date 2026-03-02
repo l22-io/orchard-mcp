@@ -28,14 +28,13 @@ triggered automatically on first run.
 - Phase 2 (Reminders read + write) -- complete
 - Phase 3 (Mail read + create_draft) -- complete
 - Phase 4a (Setup Wizard) -- complete
-- Phase 4b (Distribution) -- in progress
+- Phase 4b (Distribution) -- complete
 
 See `docs/PRD.md` for the full roadmap.
 
 ## Requirements
 
 - macOS 14+ (Sonoma or later)
-- Swift 5.9+ (Xcode Command Line Tools)
 - Node.js 18+
 
 ## Install
@@ -45,29 +44,14 @@ npm install -g @l22-io/orchard-mcp
 orchard-mcp setup
 ```
 
-## Setup
+No Swift or Xcode required -- the npm package ships a prebuilt universal binary (arm64 + x86_64).
+
+The setup wizard verifies prerequisites, triggers macOS permission prompts, and generates
+MCP client configuration.
 
 ### From source (development)
 
-```bash
-# Clone and build
-git clone git@github.com:l22-io/orchard-mcp.git
-cd orchard-mcp
-npm install
-npm run build
-
-# First run -- triggers macOS permission prompts
-./swift/.build/release/apple-bridge doctor
-```
-
-### Setup wizard
-
-```bash
-node build/index.js setup
-```
-
-The setup wizard handles prerequisite checks, Swift binary compilation, .app bundle
-creation for TCC permissions (macOS Sequoia), and permission verification.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for building from source.
 
 ## MCP Client Configuration
 
@@ -75,7 +59,7 @@ creation for TCC permissions (macOS Sequoia), and permission verification.
 
 Add as an MCP server in Warp settings with:
 ```json
-{"command": "node", "args": ["/path/to/orchard-mcp/build/index.js"]}
+{"command": "npx", "args": ["@l22-io/orchard-mcp"]}
 ```
 
 ### Claude Desktop
@@ -84,9 +68,9 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "apple": {
-      "command": "node",
-      "args": ["/path/to/orchard-mcp/build/index.js"]
+    "orchard": {
+      "command": "npx",
+      "args": ["@l22-io/orchard-mcp"]
     }
   }
 }
@@ -95,7 +79,14 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ### Claude Code
 
 ```bash
-claude mcp add --scope user orchard -- node /path/to/orchard-mcp/build/index.js
+claude mcp add --scope user orchard -- npx @l22-io/orchard-mcp
+```
+
+### Cursor
+
+Add to your MCP settings:
+```json
+{"command": "npx", "args": ["@l22-io/orchard-mcp"]}
 ```
 
 ## Available Tools
@@ -178,7 +169,7 @@ apple-bridge doctor                  Check permissions and accessible resources
 
 ## Environment Variables
 
-- `APPLE_BRIDGE_BIN` -- Override path to the Swift binary (default: `swift/.build/release/apple-bridge`)
+- `APPLE_BRIDGE_BIN` -- Override path to the Swift binary
 
 ## License
 
