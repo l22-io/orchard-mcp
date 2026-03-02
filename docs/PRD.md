@@ -146,10 +146,11 @@ A lightweight local web dashboard (localhost) is planned for post-v1:
 
 ### Pre-built binaries
 
-- Ship universal binary (arm64 + x86_64) via GitHub Releases
-- Setup wizard downloads correct binary automatically
-- Homebrew tap (`brew install l22-io/tap/apple-bridge`) as alternative channel
-- Binary must be notarized for macOS Gatekeeper (required for distribution outside App Store)
+- Universal binary (arm64 + x86_64) shipped directly in the npm package
+- No separate download step -- binary is included at publish time via `scripts/prepublish.sh`
+- Postinstall only codesigns the .app bundle (~instant, no Swift/Xcode needed)
+- Future: Homebrew tap as alternative channel
+- Future: Binary notarization for macOS Gatekeeper (required for distribution outside npm)
 
 ### MCP client configuration
 
@@ -173,9 +174,9 @@ claude mcp add --scope user orchard -- npx @l22-io/orchard-mcp
 ## Requirements
 
 - macOS 14+ (Sonoma or later) -- EventKit full access APIs
-- Swift 5.9+ (ships with Xcode 15+, or Xcode Command Line Tools)
 - Node.js 18+
 - No Docker (native macOS framework access required)
+- Swift 5.9+ only needed for development (prebuilt binary shipped in npm package)
 
 ## Development Phases
 
@@ -219,12 +220,12 @@ claude mcp add --scope user orchard -- npx @l22-io/orchard-mcp
 - Homebrew tap for apple-bridge binary
 - Submit to MCP server registries (PulseMCP, Glama, LobeHub)
 
-### Phase 5: Files & Folders
+### Phase 5: Files & Folders -- COMPLETE
 
-- Browse, list, and search files/folders on macOS via native APIs
+- `files.list`, `files.info`, `files.search`, `files.read`, `files.move`, `files.copy`, `files.create_folder`, `files.trash`
 - Directory traversal, file metadata (size, dates, type, permissions)
 - Spotlight integration for fast search across indexed volumes
-- Read-only in v1; file operations (move, copy, rename) are post-v1
+- Full CRUD: read, move, copy, create folders, trash
 
 ### Phase 6: Safari Browser Control
 
@@ -259,4 +260,3 @@ claude mcp add --scope user orchard -- npx @l22-io/orchard-mcp
 ## Open Questions
 
 1. **Mail access strategy**: AppleScript chosen for v1 (simpler, needs Automation permission). SQLite DB (faster, needs Full Disk Access) could be added as alternative with a config flag.
-2. **Binary distribution**: Ship pre-compiled arm64 binary in npm package? Or require users to compile Swift from source? (arm64-only initially since x86 Macs are rare now)
