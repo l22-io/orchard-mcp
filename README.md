@@ -1,6 +1,6 @@
 # orchard-mcp
 
-![Orchard MCP](docs/banner.png)
+![Orchard MCP](docs/banner.jpg)
 
 MCP server for Apple Calendar, Mail, Reminders, and Files on macOS using native frameworks.
 
