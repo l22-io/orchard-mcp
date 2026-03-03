@@ -1,5 +1,7 @@
 # orchard-mcp
 
+![Orchard MCP](docs/banner.png)
+
 MCP server for Apple Calendar, Mail, Reminders, and Files on macOS using native frameworks.
 
 Gives any MCP-compatible client (Warp, Claude Desktop, Claude Code, Cursor) structured
