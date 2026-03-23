@@ -20,18 +20,32 @@ enum MailBridge {
                 on error
                     set acctEmail to ""
                 end try
-                set mboxList to {}
-                try
-                    repeat with mbox in every mailbox of acct
-                        set mboxName to name of mbox
-                        set mboxUnread to unread count of mbox
-                        set end of mboxList to mboxName & "::" & (mboxUnread as string)
-                    end repeat
-                end try
+                set mboxList to my listMailboxes(acct, "")
                 set end of resultList to acctName & "|||" & acctEmail & "|||" & (my joinList(mboxList, "^^^"))
             end repeat
             return my joinList(resultList, "###")
         end tell
+
+        on listMailboxes(parentMbox, prefix)
+            set mboxList to {}
+            tell application "Mail"
+                set childBoxes to every mailbox of parentMbox
+                repeat with mbox in childBoxes
+                    set fullName to prefix & name of mbox
+                    set mboxUnread to unread count of mbox
+                    set end of mboxList to fullName & "::" & (mboxUnread as string)
+                end repeat
+            end tell
+            repeat with i from 1 to count of childBoxes
+                set mbox to item i of childBoxes
+                tell application "Mail"
+                    set mboxName to prefix & name of mbox
+                end tell
+                set subList to my listMailboxes(mbox, mboxName & "/")
+                set mboxList to mboxList & subList
+            end repeat
+            return mboxList
+        end listMailboxes
 
         on joinList(theList, delim)
             set oldDelim to AppleScript's text item delimiters
@@ -100,74 +114,171 @@ enum MailBridge {
         JSONOutput.success(accounts)
     }
 
-    /// Search messages by subject/sender text across accounts.
-    static func search(query: String, account: String?, mailbox: String?, limit: Int) {
-        let accountFilter = account.map { "of account \"\(escapeForAppleScript($0))\"" } ?? ""
-        // When mailbox is explicitly provided, use mailbox "name" syntax.
-        // When not provided, use inbox keyword (with fallback only when account is specified).
-        let mailboxTarget: String
-        if let mbox = mailbox {
-            mailboxTarget = "mailbox \"\(escapeForAppleScript(mbox))\""
-        } else {
-            mailboxTarget = "inbox"
+    /// Search messages by subject, sender, body, or all fields across accounts.
+    static func search(query: String, account: String?, mailbox: String?, limit: Int, searchIn: String, offset: Int?) {
+        let searchQuery = escapeForAppleScript(query)
+        let effectiveOffset = offset ?? 0
+        let whereClause: String
+        switch searchIn {
+        case "subject":
+            whereClause = "whose subject contains searchQuery"
+        case "sender":
+            whereClause = "whose sender contains searchQuery"
+        case "body":
+            whereClause = "whose content contains searchQuery"
+        default:
+            whereClause = "whose subject contains searchQuery or sender contains searchQuery or content contains searchQuery"
         }
 
-        // Only add fallback when account is specified -- without an account filter,
-        // "mailbox 'All Mail'" would search ALL accounts' All Mail and hang.
-        let fallbackBlock: String
-        if account != nil && mailbox == nil {
-            fallbackBlock = """
-                on error
-                    -- Fallback for accounts where inbox keyword fails (e.g. Proton Bridge)
-                    try
-                        set msgs to (every message of mailbox "All Mail" \(accountFilter) whose subject contains searchQuery or sender contains searchQuery)
-                    end try
+        let isAllMailboxes = mailbox == "all"
+        let isAllAccounts = account == "all"
+
+        let script: String
+        if isAllMailboxes {
+            // Case 3 & 4: iterate mailboxes
+            let accountLoop: String
+            if let acct = account, !isAllAccounts {
+                // Case 3: specific account, all mailboxes
+                accountLoop = "set acctList to every account whose name is \"\(escapeForAppleScript(acct))\""
+            } else {
+                // Case 4: all accounts, all mailboxes
+                accountLoop = "set acctList to every account"
+            }
+            script = """
+            tell application "Mail"
+                set resultList to {}
+                set searchQuery to "\(searchQuery)"
+                \(accountLoop)
+                set totalCount to 0
+                set skipped to 0
+                set collected to 0
+                repeat with acct in acctList
+                    repeat with mbox in every mailbox of acct
+                        try
+                            set mboxMsgs to (every message of mbox \(whereClause))
+                            set mboxCount to count of mboxMsgs
+                            set totalCount to totalCount + mboxCount
+                            repeat with j from 1 to mboxCount
+                                if skipped < \(effectiveOffset) then
+                                    set skipped to skipped + 1
+                                else if collected < \(limit) then
+                                    set msg to item j of mboxMsgs
+                                    set msgId to message id of msg
+                                    set msgSubject to subject of msg
+                                    set msgSender to sender of msg
+                                    set msgDate to date received of msg as «class isot» as string
+                                    set msgRead to read status of msg
+                                    set msgFlagged to flagged status of msg
+                                    set msgMbox to name of mbox
+                                    set end of resultList to msgId & "|||" & msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (msgRead as string) & "|||" & (msgFlagged as string) & "|||" & ((count of mail attachments of msg) as string) & "|||" & msgMbox
+                                    set collected to collected + 1
+                                end if
+                            end repeat
+                        end try
+                    end repeat
+                end repeat
+                return my joinList(resultList, "^^^") & "###TOTAL:::" & (totalCount as string)
+            end tell
+
+            on joinList(theList, delim)
+                set oldDelim to AppleScript's text item delimiters
+                set AppleScript's text item delimiters to delim
+                set theResult to theList as string
+                set AppleScript's text item delimiters to oldDelim
+                return theResult
+            end joinList
             """
         } else {
-            fallbackBlock = ""
+            // Cases 1, 2, 5: single mailbox search (existing logic with whereClause)
+            // When account is "all", leave accountFilter empty to search unified mailbox
+            let accountFilter: String
+            if let acct = account, acct != "all" {
+                accountFilter = "of account \"\(escapeForAppleScript(acct))\""
+            } else {
+                accountFilter = ""
+            }
+            let mailboxTarget: String
+            if let mbox = mailbox {
+                mailboxTarget = "mailbox \"\(escapeForAppleScript(mbox))\""
+            } else {
+                mailboxTarget = "inbox"
+            }
+
+            let fallbackBlock: String
+            if account != nil && account != "all" && mailbox == nil {
+                fallbackBlock = """
+                    on error
+                        try
+                            set msgs to (every message of mailbox "All Mail" \(accountFilter) \(whereClause))
+                        end try
+                """
+            } else {
+                fallbackBlock = ""
+            }
+
+            script = """
+            tell application "Mail"
+                set resultList to {}
+                set searchQuery to "\(searchQuery)"
+                set msgs to {}
+                try
+                    set msgs to (every message of \(mailboxTarget) \(accountFilter) \(whereClause))
+                \(fallbackBlock)
+                end try
+                set msgCount to count of msgs
+                set startIdx to \(effectiveOffset) + 1
+                set endIdx to startIdx + \(limit) - 1
+                if endIdx > msgCount then set endIdx to msgCount
+                repeat with i from startIdx to endIdx
+                    set msg to item i of msgs
+                    set msgId to message id of msg
+                    set msgSubject to subject of msg
+                    set msgSender to sender of msg
+                    set msgDate to date received of msg as «class isot» as string
+                    set msgRead to read status of msg
+                    set msgFlagged to flagged status of msg
+                    set end of resultList to msgId & "|||" & msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (msgRead as string) & "|||" & (msgFlagged as string) & "|||" & ((count of mail attachments of msg) as string)
+                end repeat
+                return my joinList(resultList, "^^^") & "###TOTAL:::" & (msgCount as string)
+            end tell
+
+            on joinList(theList, delim)
+                set oldDelim to AppleScript's text item delimiters
+                set AppleScript's text item delimiters to delim
+                set theResult to theList as string
+                set AppleScript's text item delimiters to oldDelim
+                return theResult
+            end joinList
+            """
         }
 
-        let script = """
-        tell application "Mail"
-            set resultList to {}
-            set searchQuery to "\(escapeForAppleScript(query))"
-            set msgs to {}
-            try
-                set msgs to (every message of \(mailboxTarget) \(accountFilter) whose subject contains searchQuery or sender contains searchQuery)
-            \(fallbackBlock)
-            end try
-            set msgCount to count of msgs
-            set maxItems to \(limit)
-            if msgCount < maxItems then set maxItems to msgCount
-            repeat with i from 1 to maxItems
-                set msg to item i of msgs
-                set msgId to message id of msg
-                set msgSubject to subject of msg
-                set msgSender to sender of msg
-                set msgDate to date received of msg as «class isot» as string
-                set msgRead to read status of msg
-                set msgFlagged to flagged status of msg
-                set end of resultList to msgId & "|||" & msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (msgRead as string) & "|||" & (msgFlagged as string) & "|||" & ((count of mail attachments of msg) as string)
-            end repeat
-            return my joinList(resultList, "^^^")
-        end tell
-
-        on joinList(theList, delim)
-            set oldDelim to AppleScript's text item delimiters
-            set AppleScript's text item delimiters to delim
-            set theResult to theList as string
-            set AppleScript's text item delimiters to oldDelim
-            return theResult
-        end joinList
-        """
-
         guard let raw = runAppleScript(script) else { return }
-        let messages = parseMessageList(raw)
-        JSONOutput.success(messages)
+
+        // Split off total count metadata
+        let totalParts = raw.components(separatedBy: "###TOTAL:::")
+        let messagesRaw = totalParts[0]
+        let total = totalParts.count > 1 ? Int(totalParts[1].trimmingCharacters(in: .whitespaces)) ?? 0 : 0
+
+        let messages = parseMessageList(messagesRaw)
+
+        if let offset = offset {
+            // offset was explicitly provided — return pagination envelope
+            let envelope: [String: Any] = [
+                "messages": messages,
+                "total": total,
+                "offset": offset,
+                "limit": limit,
+                "hasMore": offset + limit < total
+            ]
+            JSONOutput.success(envelope)
+        } else {
+            // offset not provided — backwards-compatible flat array
+            JSONOutput.success(messages)
+        }
     }
 
     /// Get full message content by message ID.
-    static func readMessage(messageId: String) {
+    static func readMessage(messageId: String, maxBodyLength: Int) {
         let escapedId = escapeForAppleScript(messageId)
 
         let script = """
@@ -180,16 +291,13 @@ enum MailBridge {
             end try
             if targetMsg is missing value then
                 repeat with acct in every account
-                    try
-                        inbox of acct
-                        -- inbox keyword works: message was already searched via unified inbox
-                    on error
-                        -- inbox keyword fails (e.g. Proton Bridge): search All Mail
+                    repeat with mbox in every mailbox of acct
                         try
-                            set targetMsg to first message of mailbox "All Mail" of acct whose message id is "\(escapedId)"
+                            set targetMsg to first message of mbox whose message id is "\(escapedId)"
                             exit repeat
                         end try
-                    end try
+                    end repeat
+                    if targetMsg is not missing value then exit repeat
                 end repeat
             end if
             if targetMsg is missing value then
@@ -236,6 +344,11 @@ enum MailBridge {
             return
         }
 
+        var body = parts[5]
+        if maxBodyLength > 0 && body.count > maxBodyLength {
+            body = String(body.prefix(maxBodyLength)) + "\n\n[truncated — \(body.count) chars total]"
+        }
+
         var message: [String: Any] = [
             "id": messageId,
             "subject": parts[0],
@@ -243,7 +356,7 @@ enum MailBridge {
             "date": parts[2],
             "read": parts[3] == "true",
             "flagged": parts[4] == "true",
-            "body": parts[5]
+            "body": body
         ]
         if parts.count > 6 { message["to"] = parts[6] }
         if parts.count > 7 { message["cc"] = parts[7] }
@@ -272,42 +385,104 @@ enum MailBridge {
     }
 
     /// List flagged messages across all accounts.
-    static func flagged(limit: Int) {
-        let script = """
-        tell application "Mail"
-            set resultList to {}
-            repeat with acct in every account
-                try
-                    repeat with mbox in every mailbox of acct
-                        set flaggedMsgs to (every message of mbox whose flagged status is true)
-                        repeat with msg in flaggedMsgs
-                            set msgId to message id of msg
-                            set msgSubject to subject of msg
-                            set msgSender to sender of msg
-                            set msgDate to date received of msg as «class isot» as string
-                            set end of resultList to msgId & "|||" & msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (name of acct) & "|||" & ((count of mail attachments of msg) as string)
+    static func flagged(limit: Int, offset: Int?) {
+        let effectiveOffset = offset ?? 0
+
+        // Two script variants: without pagination (early-exit for performance)
+        // and with pagination (must count all flagged messages for total).
+        let script: String
+        if offset != nil {
+            // Pagination: iterate everything to compute totalCount
+            script = """
+            tell application "Mail"
+                set resultList to {}
+                set totalCount to 0
+                set skipped to 0
+                set collected to 0
+                repeat with acct in every account
+                    try
+                        repeat with mbox in every mailbox of acct
+                            set flaggedMsgs to (every message of mbox whose flagged status is true)
+                            set totalCount to totalCount + (count of flaggedMsgs)
+                            repeat with msg in flaggedMsgs
+                                if skipped < \(effectiveOffset) then
+                                    set skipped to skipped + 1
+                                else if collected < \(limit) then
+                                    set msgId to message id of msg
+                                    set msgSubject to subject of msg
+                                    set msgSender to sender of msg
+                                    set msgDate to date received of msg as «class isot» as string
+                                    set end of resultList to msgId & "|||" & msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (name of acct) & "|||" & ((count of mail attachments of msg) as string)
+                                    set collected to collected + 1
+                                end if
+                            end repeat
+                        end repeat
+                    end try
+                end repeat
+                return my joinList(resultList, "^^^") & "###TOTAL:::" & (totalCount as string)
+            end tell
+
+            on joinList(theList, delim)
+                set oldDelim to AppleScript's text item delimiters
+                set AppleScript's text item delimiters to delim
+                set theResult to theList as string
+                set AppleScript's text item delimiters to oldDelim
+                return theResult
+            end joinList
+            """
+        } else {
+            // No pagination: early-exit once limit is reached
+            script = """
+            tell application "Mail"
+                set resultList to {}
+                repeat with acct in every account
+                    try
+                        repeat with mbox in every mailbox of acct
+                            set flaggedMsgs to (every message of mbox whose flagged status is true)
+                            repeat with msg in flaggedMsgs
+                                set msgId to message id of msg
+                                set msgSubject to subject of msg
+                                set msgSender to sender of msg
+                                set msgDate to date received of msg as «class isot» as string
+                                set end of resultList to msgId & "|||" & msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (name of acct) & "|||" & ((count of mail attachments of msg) as string)
+                                if (count of resultList) >= \(limit) then exit repeat
+                            end repeat
                             if (count of resultList) >= \(limit) then exit repeat
                         end repeat
-                        if (count of resultList) >= \(limit) then exit repeat
-                    end repeat
-                end try
-                if (count of resultList) >= \(limit) then exit repeat
-            end repeat
-            return my joinList(resultList, "^^^")
-        end tell
+                    end try
+                    if (count of resultList) >= \(limit) then exit repeat
+                end repeat
+                return my joinList(resultList, "^^^")
+            end tell
 
-        on joinList(theList, delim)
-            set oldDelim to AppleScript's text item delimiters
-            set AppleScript's text item delimiters to delim
-            set theResult to theList as string
-            set AppleScript's text item delimiters to oldDelim
-            return theResult
-        end joinList
-        """
+            on joinList(theList, delim)
+                set oldDelim to AppleScript's text item delimiters
+                set AppleScript's text item delimiters to delim
+                set theResult to theList as string
+                set AppleScript's text item delimiters to oldDelim
+                return theResult
+            end joinList
+            """
+        }
 
         guard let raw = runAppleScript(script) else { return }
-        let messages = parseFlaggedList(raw)
-        JSONOutput.success(messages)
+        let totalParts = raw.components(separatedBy: "###TOTAL:::")
+        let messagesRaw = totalParts[0]
+        let total = totalParts.count > 1 ? Int(totalParts[1].trimmingCharacters(in: .whitespaces)) ?? 0 : 0
+        let messages = parseFlaggedList(messagesRaw)
+
+        if let offset = offset {
+            let envelope: [String: Any] = [
+                "messages": messages,
+                "total": total,
+                "offset": offset,
+                "limit": limit,
+                "hasMore": offset + limit < total
+            ]
+            JSONOutput.success(envelope)
+        } else {
+            JSONOutput.success(messages)
+        }
     }
 
     /// Create a draft email in Mail.app. Opens the compose window for user review.
@@ -394,14 +569,13 @@ enum MailBridge {
             end try
             if targetMsg is missing value then
                 repeat with acct in every account
-                    try
-                        inbox of acct
-                    on error
+                    repeat with mbox in every mailbox of acct
                         try
-                            set targetMsg to first message of mailbox "All Mail" of acct whose message id is "\(escapedId)"
+                            set targetMsg to first message of mbox whose message id is "\(escapedId)"
                             exit repeat
                         end try
-                    end try
+                    end repeat
+                    if targetMsg is not missing value then exit repeat
                 end repeat
             end if
             if targetMsg is missing value then
@@ -583,6 +757,9 @@ enum MailBridge {
                 let count = Int(fields[6].trimmingCharacters(in: .whitespaces)) ?? 0
                 msg["attachmentCount"] = count
                 msg["hasAttachments"] = count > 0
+            }
+            if fields.count > 7 {
+                msg["mailbox"] = fields[7].trimmingCharacters(in: .whitespaces)
             }
             return msg
         }

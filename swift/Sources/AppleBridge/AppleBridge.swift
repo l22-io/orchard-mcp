@@ -141,7 +141,7 @@ struct MailUnread: AsyncParsableCommand {
 struct MailSearchCmd: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "mail-search",
-        abstract: "Search messages by subject or sender."
+        abstract: "Search messages by subject, sender, body, or all fields."
     )
 
     @Option(name: .long, help: "Search query (matches subject and sender)")
@@ -156,8 +156,14 @@ struct MailSearchCmd: AsyncParsableCommand {
     @Option(name: .long, help: "Max results to return (default: 20)")
     var limit: Int = 20
 
+    @Option(name: .long, help: "Fields to search: subject, sender, body, all (default: all)")
+    var searchIn: String = "all"
+
+    @Option(name: .long, help: "Number of results to skip for pagination")
+    var offset: Int?
+
     func run() async throws {
-        MailBridge.search(query: query, account: account, mailbox: mailbox, limit: limit)
+        MailBridge.search(query: query, account: account, mailbox: mailbox, limit: limit, searchIn: searchIn, offset: offset)
     }
 }
 
@@ -170,8 +176,11 @@ struct MailMessage: AsyncParsableCommand {
     @Option(name: .long, help: "Message ID (from mail-search or mail-unread)")
     var id: String
 
+    @Option(name: .long, help: "Max body characters to return (default: 4000, 0 = unlimited)")
+    var maxBodyLength: Int = 4000
+
     func run() async throws {
-        MailBridge.readMessage(messageId: id)
+        MailBridge.readMessage(messageId: id, maxBodyLength: maxBodyLength)
     }
 }
 
@@ -184,8 +193,11 @@ struct MailFlagged: AsyncParsableCommand {
     @Option(name: .long, help: "Max results to return (default: 20)")
     var limit: Int = 20
 
+    @Option(name: .long, help: "Number of results to skip for pagination")
+    var offset: Int?
+
     func run() async throws {
-        MailBridge.flagged(limit: limit)
+        MailBridge.flagged(limit: limit, offset: offset)
     }
 }
 

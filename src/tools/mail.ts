@@ -40,11 +40,11 @@ export function registerMailTools(server: McpServer): void {
 
   server.tool(
     "mail.search",
-    "Search email messages by subject or sender text. Returns headers only (no body) for performance. Requires Mail.app to be running.",
+    "Search email messages by subject, sender, body, or all fields (default: all). Returns headers only (no body). Body search across all mailboxes may be slow on large accounts.",
     {
       query: z
         .string()
-        .describe("Search term to match against message subject or sender"),
+        .describe("Search term to match against message fields (controlled by searchIn)"),
       account: z
         .string()
         .optional()
@@ -52,13 +52,23 @@ export function registerMailTools(server: McpServer): void {
       mailbox: z
         .string()
         .optional()
-        .describe("Mailbox to search in (default: inbox)"),
+        .describe("Mailbox to search in (default: inbox). Use 'all' to search all mailboxes."),
+      searchIn: z
+        .enum(["subject", "sender", "body", "all"])
+        .optional()
+        .describe("Fields to search: subject, sender, body, or all (default: all)"),
       limit: z
         .number()
         .optional()
         .describe("Max results to return (default: 20)"),
+      offset: z
+        .number()
+        .optional()
+        .describe(
+          "Number of results to skip (default: 0). Use with limit for pagination. When provided, response includes total count and hasMore flag."
+        ),
     },
-    async ({ query, account, mailbox, limit }) => {
+    async ({ query, account, mailbox, searchIn, limit, offset }) => {
       const args = ["mail-search", "--query", query];
       if (account) {
         args.push("--account", account);
@@ -66,8 +76,14 @@ export function registerMailTools(server: McpServer): void {
       if (mailbox) {
         args.push("--mailbox", mailbox);
       }
+      if (searchIn) {
+        args.push("--search-in", searchIn);
+      }
       if (limit) {
         args.push("--limit", String(limit));
+      }
+      if (offset !== undefined) {
+        args.push("--offset", String(offset));
       }
       const data = await bridgeData(args);
       return {
@@ -83,9 +99,17 @@ export function registerMailTools(server: McpServer): void {
       messageId: z
         .string()
         .describe("Message ID (from mail.search or mail.unread_summary results)"),
+      maxBodyLength: z
+        .number()
+        .optional()
+        .describe("Max body characters to return (default: 4000). Use 0 for unlimited."),
     },
-    async ({ messageId }) => {
-      const data = await bridgeData(["mail-message", "--id", messageId]);
+    async ({ messageId, maxBodyLength }) => {
+      const args = ["mail-message", "--id", messageId];
+      if (maxBodyLength !== undefined) {
+        args.push("--max-body-length", String(maxBodyLength));
+      }
+      const data = await bridgeData(args);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -150,11 +174,20 @@ export function registerMailTools(server: McpServer): void {
         .number()
         .optional()
         .describe("Max results to return (default: 20)"),
+      offset: z
+        .number()
+        .optional()
+        .describe(
+          "Number of results to skip (default: 0). Use with limit for pagination. When provided, response includes total count and hasMore flag."
+        ),
     },
-    async ({ limit }) => {
+    async ({ limit, offset }) => {
       const args = ["mail-flagged"];
       if (limit) {
         args.push("--limit", String(limit));
+      }
+      if (offset !== undefined) {
+        args.push("--offset", String(offset));
       }
       const data = await bridgeData(args);
       return {
