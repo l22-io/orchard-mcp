@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.3.3] - 2026-03-23
+
+### Added
+- Body search via `searchIn` parameter (subject, sender, body, or all fields)
+- Cross-mailbox (`mailbox: "all"`) and cross-account (`account: "all"`) search
+- Nested mailbox traversal in `mail.list_accounts` (recursive, path-like names)
+- Pagination with opt-in `offset` parameter on `mail.search` and `mail.flagged`
+- Body truncation on `mail.read_message` (default 4000 chars, configurable via `maxBodyLength`)
+- Test suite for mail tool logic (`tests/mail.test.ts`)
+
+### Fixed
+- `readMessage` and `saveAttachment` fallback now searches all mailboxes (not just Proton's All Mail)
+
+## [0.3.2] - 2026-03-04
+
+### Added
+- Package directory with manifest
+- Banner image in README
+
 ## [0.3.1] - 2026-03-02
 
 ### Changed
