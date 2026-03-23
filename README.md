@@ -102,11 +102,11 @@ Add to your MCP settings:
 
 ### Mail
 
-- `mail.list_accounts` -- List all mail accounts with mailboxes and unread counts
+- `mail.list_accounts` -- List all mail accounts with mailboxes (including nested) and unread counts
 - `mail.unread_summary` -- Unread count per account with recent message headers
-- `mail.search` -- Search messages by subject/sender across accounts
-- `mail.read_message` -- Get full message content by message ID
-- `mail.flagged` -- List flagged messages across all accounts
+- `mail.search` -- Search messages by subject, sender, body, or all fields. Supports cross-mailbox (`mailbox: "all"`) and cross-account (`account: "all"`) search with pagination
+- `mail.read_message` -- Get message content by ID with configurable body truncation (default: 4000 chars)
+- `mail.flagged` -- List flagged messages across all accounts with pagination
 - `mail.create_draft` -- Create a draft email (opens compose window for review)
 - `mail.save_attachment` -- Save an email attachment to disk by message ID and index
 
@@ -162,9 +162,9 @@ apple-bridge reminder-delete         Delete a reminder (--id)
 apple-bridge reminder-delete-list    Delete a reminder list (--id, --force)
 apple-bridge mail-accounts           List mail accounts and mailboxes
 apple-bridge mail-unread             Unread summary per account (--limit)
-apple-bridge mail-search             Search messages (--query, --account, --mailbox, --limit)
-apple-bridge mail-message            Full message content (--id)
-apple-bridge mail-flagged            Flagged messages (--limit)
+apple-bridge mail-search             Search messages (--query, --account, --mailbox, --limit, --search-in, --offset)
+apple-bridge mail-message            Full message content (--id, --max-body-length)
+apple-bridge mail-flagged            Flagged messages (--limit, --offset)
 apple-bridge mail-create-draft       Create a draft email (--to, --subject, --body, --cc, --bcc, --account)
 apple-bridge doctor                  Check permissions and accessible resources
 ```
