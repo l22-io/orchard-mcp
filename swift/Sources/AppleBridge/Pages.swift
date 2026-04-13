@@ -10,8 +10,9 @@ enum PagesBridge {
         tell application "Pages"
             set doc to open POSIX file "\(escaped)"
             set docName to name of doc
-            set wc to word count of doc
-            set pc to page count of doc
+            set bodyText to body text of doc
+            set wc to count of words of bodyText
+            set pc to count of pages of doc
             close doc saving no
             return docName & "|||" & (wc as string) & "|||" & (pc as string)
         end tell
@@ -41,8 +42,8 @@ enum PagesBridge {
         tell application "Pages"
             set doc to open POSIX file "\(escaped)"
             set bodyText to body text of doc
-            set wc to word count of doc
-            set pc to page count of doc
+            set wc to count of words of bodyText
+            set pc to count of pages of doc
             close doc saving no
             return bodyText & "|||" & (wc as string) & "|||" & (pc as string)
         end tell
@@ -160,9 +161,11 @@ enum PagesBridge {
         tell application "Pages"
             set doc to open POSIX file "\(escapedFile)"
             set bodyText to body text of doc
-            set oldDelim to AppleScript's text item delimiters
-            set matchCount to 0
-            \(replaceLogic)
+        end tell
+        set oldDelim to AppleScript's text item delimiters
+        set matchCount to 0
+        \(replaceLogic)
+        tell application "Pages"
             set body text of doc to newText
             save doc
             close doc
