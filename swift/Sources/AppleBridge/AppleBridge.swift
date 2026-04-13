@@ -27,7 +27,7 @@ struct AppleBridge: AsyncParsableCommand {
 
     static let configuration = CommandConfiguration(
         commandName: "apple-bridge",
-        abstract: "Native macOS bridge for Apple Calendar, Mail, Reminders, Numbers, and Pages.",
+        abstract: "Native macOS bridge for Apple Calendar, Mail, Reminders, Numbers, Pages, and Keynote.",
         version: "0.3.0",
         subcommands: [
             Calendars.self,
@@ -78,6 +78,18 @@ struct AppleBridge: AsyncParsableCommand {
             PagesListSections.self,
             PagesExport.self,
             PagesInfo.self,
+            // Keynote
+            KeynoteSearch.self,
+            KeynoteRead.self,
+            KeynoteCreate.self,
+            KeynoteAddSlide.self,
+            KeynoteEditSlide.self,
+            KeynoteRemoveSlide.self,
+            KeynoteReorderSlides.self,
+            KeynoteListSlides.self,
+            KeynoteListThemes.self,
+            KeynoteExport.self,
+            KeynoteInfo.self,
         ]
     )
 }
@@ -688,4 +700,89 @@ struct PagesInfo: ParsableCommand {
     static let configuration = CommandConfiguration(commandName: "pages-info", abstract: "Get metadata about a Pages document.")
     @Option(name: .long, help: "Path to .pages file") var file: String
     func run() throws { PagesBridge.info(file: file) }
+}
+
+// MARK: - Keynote Subcommands
+
+struct KeynoteSearch: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "keynote-search", abstract: "Search for Keynote presentations using Spotlight.")
+    @Option(name: .long, help: "Search query") var query: String
+    @Option(name: .long, help: "Max results (default: 20)") var limit: Int = 20
+    func run() throws { KeynoteBridge.search(query: query, limit: limit) }
+}
+
+struct KeynoteRead: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "keynote-read", abstract: "Read slide content from a Keynote presentation.")
+    @Option(name: .long, help: "Path to .key file") var file: String
+    @Option(name: .long, help: "Slide index (1-based, omit to read all)") var slide: Int?
+    func run() throws { KeynoteBridge.read(file: file, slideIndex: slide) }
+}
+
+struct KeynoteCreate: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "keynote-create", abstract: "Create a new Keynote presentation.")
+    @Option(name: .long, help: "Output file path") var file: String
+    @Option(name: .long, help: "Theme name") var theme: String?
+    func run() throws { KeynoteBridge.create(file: file, theme: theme) }
+}
+
+struct KeynoteAddSlide: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "keynote-add-slide", abstract: "Add a slide to a Keynote presentation.")
+    @Option(name: .long, help: "Path to .key file") var file: String
+    @Option(name: .long, help: "Slide layout name") var layout: String?
+    @Option(name: .long, help: "Slide title") var title: String?
+    @Option(name: .long, help: "Slide body text") var body: String?
+    @Option(name: .long, help: "Presenter notes") var notes: String?
+    @Option(name: .long, help: "Insert after this slide index (1-based)") var position: Int?
+    func run() throws { KeynoteBridge.addSlide(file: file, layout: layout, title: title, body: body, notes: notes, position: position) }
+}
+
+struct KeynoteEditSlide: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "keynote-edit-slide", abstract: "Edit an existing slide in a Keynote presentation.")
+    @Option(name: .long, help: "Path to .key file") var file: String
+    @Option(name: .long, help: "Slide index (1-based)") var slide: Int
+    @Option(name: .long, help: "New title text") var title: String?
+    @Option(name: .long, help: "New body text") var body: String?
+    @Option(name: .long, help: "New presenter notes") var notes: String?
+    func run() throws { KeynoteBridge.editSlide(file: file, slideIndex: slide, title: title, body: body, notes: notes) }
+}
+
+struct KeynoteRemoveSlide: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "keynote-remove-slide", abstract: "Remove a slide from a Keynote presentation.")
+    @Option(name: .long, help: "Path to .key file") var file: String
+    @Option(name: .long, help: "Slide index to remove (1-based)") var slide: Int
+    func run() throws { KeynoteBridge.removeSlide(file: file, slideIndex: slide) }
+}
+
+struct KeynoteReorderSlides: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "keynote-reorder-slides", abstract: "Move a slide to a new position.")
+    @Option(name: .long, help: "Path to .key file") var file: String
+    @Option(name: .long, help: "Current slide index (1-based)") var from: Int
+    @Option(name: .long, help: "Target slide index (1-based)") var to: Int
+    func run() throws { KeynoteBridge.reorderSlides(file: file, from: from, to: to) }
+}
+
+struct KeynoteListSlides: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "keynote-list-slides", abstract: "List all slides in a Keynote presentation.")
+    @Option(name: .long, help: "Path to .key file") var file: String
+    func run() throws { KeynoteBridge.read(file: file, slideIndex: nil) }
+}
+
+struct KeynoteListThemes: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "keynote-list-themes", abstract: "List all available Keynote themes.")
+    func run() throws { KeynoteBridge.listThemes() }
+}
+
+struct KeynoteExport: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "keynote-export", abstract: "Export a Keynote presentation to PDF, PowerPoint, PNG, or JPEG.")
+    @Option(name: .long, help: "Path to .key file") var file: String
+    @Option(name: .long, help: "Export format: pdf, pptx, png, jpeg") var format: String
+    @Option(name: .long, help: "Output file or directory path") var output: String?
+    @Option(name: .long, help: "Export only this slide index (1-based, for image formats)") var slide: Int?
+    func run() throws { KeynoteBridge.export(file: file, format: format, output: output, slideIndex: slide) }
+}
+
+struct KeynoteInfo: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "keynote-info", abstract: "Get metadata about a Keynote presentation.")
+    @Option(name: .long, help: "Path to .key file") var file: String
+    func run() throws { KeynoteBridge.info(file: file) }
 }

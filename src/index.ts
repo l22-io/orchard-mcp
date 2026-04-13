@@ -16,6 +16,7 @@ import { registerSystemTools } from "./tools/system.js";
 import { registerFileTools } from "./tools/files.js";
 import { registerNumbersTools } from "./tools/numbers.js";
 import { registerPagesTools } from "./tools/pages.js";
+import { registerKeynoteTools } from "./tools/keynote.js";
 
 const server = new McpServer({
   name: "orchard-mcp",
@@ -29,6 +30,7 @@ registerSystemTools(server);
 registerFileTools(server);
 registerNumbersTools(server);
 registerPagesTools(server);
+registerKeynoteTools(server);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
