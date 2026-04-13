@@ -28,7 +28,7 @@ struct AppleBridge: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "apple-bridge",
         abstract: "Native macOS bridge for Apple Calendar, Mail, Reminders, Numbers, Pages, and Keynote.",
-        version: "0.3.0",
+        version: "0.4.0",
         subcommands: [
             Calendars.self,
             Events.self,
