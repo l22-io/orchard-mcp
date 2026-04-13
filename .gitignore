@@ -6,3 +6,4 @@ swift/.build/
 .DS_Store
 .claude/
 CLAUDE.md
+.worktrees/
