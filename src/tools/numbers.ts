@@ -7,9 +7,12 @@ export function registerNumbersTools(server: McpServer): void {
     "numbers.search",
     "Search for Numbers spreadsheet files by name or content.",
     {
-      query: z.string().describe("Search term to match against file names or content"),
+      query: z.string().max(500).describe("Search term to match against file names or content"),
       limit: z
         .number()
+        .int()
+        .min(1)
+        .max(100)
         .optional()
         .describe("Maximum number of results to return"),
     },
@@ -29,10 +32,10 @@ export function registerNumbersTools(server: McpServer): void {
     "numbers.read",
     "Read data from a Numbers spreadsheet. Optionally specify sheet, table, and cell range.",
     {
-      file: z.string().describe("Path to the Numbers file"),
-      sheet: z.string().optional().describe("Sheet name to read from"),
-      table: z.string().optional().describe("Table name to read from"),
-      range: z.string().optional().describe("Cell range to read (e.g. A1:C10)"),
+      file: z.string().max(1024).describe("Path to the Numbers file"),
+      sheet: z.string().max(256).optional().describe("Sheet name to read from"),
+      table: z.string().max(256).optional().describe("Table name to read from"),
+      range: z.string().max(20).optional().describe("Cell range to read (e.g. A1:C10)"),
     },
     async ({ file, sheet, table, range }) => {
       const args = ["numbers-read", "--file", file];
@@ -50,11 +53,11 @@ export function registerNumbersTools(server: McpServer): void {
     "numbers.write",
     "Write data to a Numbers spreadsheet. Optionally specify sheet, table, and cell range.",
     {
-      file: z.string().describe("Path to the Numbers file"),
-      data: z.string().describe("Data to write (JSON-encoded rows/columns)"),
-      sheet: z.string().optional().describe("Sheet name to write to"),
-      table: z.string().optional().describe("Table name to write to"),
-      range: z.string().optional().describe("Cell range to write to (e.g. A1)"),
+      file: z.string().max(1024).describe("Path to the Numbers file"),
+      data: z.string().max(1_000_000).describe("Data to write (JSON-encoded rows/columns)"),
+      sheet: z.string().max(256).optional().describe("Sheet name to write to"),
+      table: z.string().max(256).optional().describe("Table name to write to"),
+      range: z.string().max(20).optional().describe("Cell range to write to (e.g. A1)"),
     },
     async ({ file, data: writeData, sheet, table, range }) => {
       const args = ["numbers-write", "--file", file, "--data", writeData];
@@ -72,13 +75,15 @@ export function registerNumbersTools(server: McpServer): void {
     "numbers.create",
     "Create a new Numbers spreadsheet. Optionally provide initial data or a template.",
     {
-      file: z.string().describe("Path for the new Numbers file"),
+      file: z.string().max(1024).describe("Path for the new Numbers file"),
       data: z
         .string()
+        .max(1_000_000)
         .optional()
         .describe("Initial data to populate (JSON-encoded rows/columns)"),
       template: z
         .string()
+        .max(10_000)
         .optional()
         .describe("Template name or path to use"),
     },
@@ -97,7 +102,7 @@ export function registerNumbersTools(server: McpServer): void {
     "numbers.list_sheets",
     "List all sheets in a Numbers spreadsheet.",
     {
-      file: z.string().describe("Path to the Numbers file"),
+      file: z.string().max(1024).describe("Path to the Numbers file"),
     },
     async ({ file }) => {
       const data = await bridgeData(["numbers-list-sheets", "--file", file]);
@@ -111,8 +116,8 @@ export function registerNumbersTools(server: McpServer): void {
     "numbers.add_sheet",
     "Add a new sheet to a Numbers spreadsheet.",
     {
-      file: z.string().describe("Path to the Numbers file"),
-      name: z.string().describe("Name for the new sheet"),
+      file: z.string().max(1024).describe("Path to the Numbers file"),
+      name: z.string().max(10_000).describe("Name for the new sheet"),
     },
     async ({ file, name }) => {
       const data = await bridgeData([
@@ -132,8 +137,8 @@ export function registerNumbersTools(server: McpServer): void {
     "numbers.remove_sheet",
     "Remove a sheet from a Numbers spreadsheet.",
     {
-      file: z.string().describe("Path to the Numbers file"),
-      name: z.string().describe("Name of the sheet to remove"),
+      file: z.string().max(1024).describe("Path to the Numbers file"),
+      name: z.string().max(10_000).describe("Name of the sheet to remove"),
     },
     async ({ file, name }) => {
       const data = await bridgeData([
@@ -153,10 +158,10 @@ export function registerNumbersTools(server: McpServer): void {
     "numbers.get_formulas",
     "Get formulas from cells in a Numbers spreadsheet. Optionally specify sheet, table, and range.",
     {
-      file: z.string().describe("Path to the Numbers file"),
-      sheet: z.string().optional().describe("Sheet name"),
-      table: z.string().optional().describe("Table name"),
-      range: z.string().optional().describe("Cell range (e.g. A1:C10)"),
+      file: z.string().max(1024).describe("Path to the Numbers file"),
+      sheet: z.string().max(256).optional().describe("Sheet name"),
+      table: z.string().max(256).optional().describe("Table name"),
+      range: z.string().max(20).optional().describe("Cell range (e.g. A1:C10)"),
     },
     async ({ file, sheet, table, range }) => {
       const args = ["numbers-get-formulas", "--file", file];
@@ -174,12 +179,13 @@ export function registerNumbersTools(server: McpServer): void {
     "numbers.export",
     "Export a Numbers spreadsheet to another format (CSV, PDF, or XLSX).",
     {
-      file: z.string().describe("Path to the Numbers file"),
+      file: z.string().max(1024).describe("Path to the Numbers file"),
       format: z
         .enum(["csv", "pdf", "xlsx"])
         .describe("Export format: csv, pdf, or xlsx"),
       dest: z
         .string()
+        .max(1024)
         .optional()
         .describe("Output file path (defaults to same directory as input)"),
     },
@@ -197,7 +203,7 @@ export function registerNumbersTools(server: McpServer): void {
     "numbers.info",
     "Get metadata and summary information about a Numbers spreadsheet.",
     {
-      file: z.string().describe("Path to the Numbers file"),
+      file: z.string().max(1024).describe("Path to the Numbers file"),
     },
     async ({ file }) => {
       const data = await bridgeData(["numbers-info", "--file", file]);

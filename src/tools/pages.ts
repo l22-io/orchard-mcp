@@ -7,9 +7,12 @@ export function registerPagesTools(server: McpServer): void {
     "pages.search",
     "Search for Pages document files by name or content.",
     {
-      query: z.string().describe("Search term to match against file names or content"),
+      query: z.string().max(500).describe("Search term to match against file names or content"),
       limit: z
         .number()
+        .int()
+        .min(1)
+        .max(100)
         .optional()
         .describe("Maximum number of results to return"),
     },
@@ -29,7 +32,7 @@ export function registerPagesTools(server: McpServer): void {
     "pages.read",
     "Read the body text from a Pages document.",
     {
-      file: z.string().describe("Path to the Pages file"),
+      file: z.string().max(1024).describe("Path to the Pages file"),
     },
     async ({ file }) => {
       const data = await bridgeData(["pages-read", "--file", file]);
@@ -43,8 +46,8 @@ export function registerPagesTools(server: McpServer): void {
     "pages.write",
     "Set the body text of a Pages document.",
     {
-      file: z.string().describe("Path to the Pages file"),
-      text: z.string().describe("Text to write as the document body"),
+      file: z.string().max(1024).describe("Path to the Pages file"),
+      text: z.string().max(5_000_000).describe("Text to write as the document body"),
     },
     async ({ file, text }) => {
       const data = await bridgeData([
@@ -64,13 +67,15 @@ export function registerPagesTools(server: McpServer): void {
     "pages.create",
     "Create a new Pages document. Optionally provide initial text or a template.",
     {
-      file: z.string().describe("Path for the new Pages file"),
+      file: z.string().max(1024).describe("Path for the new Pages file"),
       text: z
         .string()
+        .max(5_000_000)
         .optional()
         .describe("Initial body text for the document"),
       template: z
         .string()
+        .max(10_000)
         .optional()
         .describe("Template name or path to use"),
     },
@@ -89,9 +94,9 @@ export function registerPagesTools(server: McpServer): void {
     "pages.find_replace",
     "Find and replace text in a Pages document.",
     {
-      file: z.string().describe("Path to the Pages file"),
-      find: z.string().describe("Text to search for"),
-      replace: z.string().describe("Replacement text"),
+      file: z.string().max(1024).describe("Path to the Pages file"),
+      find: z.string().max(10_000).describe("Text to search for"),
+      replace: z.string().max(10_000).describe("Replacement text"),
       all: z
         .boolean()
         .optional()
@@ -119,9 +124,10 @@ export function registerPagesTools(server: McpServer): void {
     "pages.insert_table",
     "Insert a table into a Pages document from JSON data.",
     {
-      file: z.string().describe("Path to the Pages file"),
+      file: z.string().max(1024).describe("Path to the Pages file"),
       data: z
         .string()
+        .max(1_000_000)
         .describe("Table data as JSON array of arrays (e.g. [[\"Name\",\"Age\"],[\"Alice\",30]])"),
     },
     async ({ file, data: tableData }) => {
@@ -137,7 +143,7 @@ export function registerPagesTools(server: McpServer): void {
     "pages.list_sections",
     "List sections in a Pages document with preview text and word counts.",
     {
-      file: z.string().describe("Path to the Pages file"),
+      file: z.string().max(1024).describe("Path to the Pages file"),
     },
     async ({ file }) => {
       const data = await bridgeData(["pages-list-sections", "--file", file]);
@@ -151,12 +157,13 @@ export function registerPagesTools(server: McpServer): void {
     "pages.export",
     "Export a Pages document to another format (PDF, Word, TXT, or EPUB).",
     {
-      file: z.string().describe("Path to the Pages file"),
+      file: z.string().max(1024).describe("Path to the Pages file"),
       format: z
         .enum(["pdf", "docx", "txt", "epub"])
         .describe("Export format: pdf, docx, txt, or epub"),
       dest: z
         .string()
+        .max(1024)
         .optional()
         .describe("Output file path (defaults to same directory as input)"),
     },
@@ -174,7 +181,7 @@ export function registerPagesTools(server: McpServer): void {
     "pages.info",
     "Get metadata about a Pages document (name, word count, page count).",
     {
-      file: z.string().describe("Path to the Pages file"),
+      file: z.string().max(1024).describe("Path to the Pages file"),
     },
     async ({ file }) => {
       const data = await bridgeData(["pages-info", "--file", file]);

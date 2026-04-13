@@ -5,7 +5,11 @@ enum PagesBridge {
     // MARK: - Info
 
     static func info(file: String) {
-        let escaped = escapeForAppleScript(file)
+        guard let resolvedFile = FilesBridge.validatePath(file) else {
+            JSONOutput.error("Path is outside home directory or does not exist: \(file)")
+            return
+        }
+        let escaped = escapeForAppleScript(resolvedFile)
         let script = """
         tell application "Pages"
             set doc to open POSIX file "\(escaped)"
@@ -29,7 +33,7 @@ enum PagesBridge {
             "name": parts[0],
             "wordCount": Int(parts[1].trimmingCharacters(in: .whitespaces)) ?? 0,
             "pageCount": Int(parts[2].trimmingCharacters(in: .whitespaces)) ?? 0,
-            "path": file
+            "path": resolvedFile
         ]
         JSONOutput.success(result)
     }
@@ -37,7 +41,11 @@ enum PagesBridge {
     // MARK: - Read
 
     static func read(file: String) {
-        let escaped = escapeForAppleScript(file)
+        guard let resolvedFile = FilesBridge.validatePath(file) else {
+            JSONOutput.error("Path is outside home directory or does not exist: \(file)")
+            return
+        }
+        let escaped = escapeForAppleScript(resolvedFile)
         let script = """
         tell application "Pages"
             set doc to open POSIX file "\(escaped)"
@@ -60,7 +68,7 @@ enum PagesBridge {
             "text": parts[0],
             "wordCount": Int(parts[1].trimmingCharacters(in: .whitespaces)) ?? 0,
             "pageCount": Int(parts[2].trimmingCharacters(in: .whitespaces)) ?? 0,
-            "path": file
+            "path": resolvedFile
         ]
         JSONOutput.success(result)
     }
@@ -68,7 +76,11 @@ enum PagesBridge {
     // MARK: - Write
 
     static func write(file: String, text: String) {
-        let escapedFile = escapeForAppleScript(file)
+        guard let resolvedFile = FilesBridge.validatePath(file) else {
+            JSONOutput.error("Path is outside home directory or does not exist: \(file)")
+            return
+        }
+        let escapedFile = escapeForAppleScript(resolvedFile)
         let escapedText = escapeForAppleScript(text)
         let script = """
         tell application "Pages"
@@ -81,13 +93,17 @@ enum PagesBridge {
         """
 
         guard let _ = runAppleScript(script) else { return }
-        JSONOutput.success(["path": file, "written": true])
+        JSONOutput.success(["path": resolvedFile, "written": true])
     }
 
     // MARK: - Create
 
     static func create(file: String, text: String?, template: String?) {
-        let escaped = escapeForAppleScript(file)
+        guard let resolvedFile = FilesBridge.validatePath(file, mustExist: false) else {
+            JSONOutput.error("Path is outside home directory: \(file)")
+            return
+        }
+        let escaped = escapeForAppleScript(resolvedFile)
 
         let templateClause: String
         if let template = template {
@@ -117,13 +133,17 @@ enum PagesBridge {
         """
 
         guard let _ = runAppleScript(script) else { return }
-        JSONOutput.success(["path": file, "created": true])
+        JSONOutput.success(["path": resolvedFile, "created": true])
     }
 
     // MARK: - Find & Replace
 
     static func findReplace(file: String, find: String, replace: String, all: Bool) {
-        let escapedFile = escapeForAppleScript(file)
+        guard let resolvedFile = FilesBridge.validatePath(file) else {
+            JSONOutput.error("Path is outside home directory or does not exist: \(file)")
+            return
+        }
+        let escapedFile = escapeForAppleScript(resolvedFile)
         let escapedFind = escapeForAppleScript(find)
         let escapedReplace = escapeForAppleScript(replace)
 
@@ -175,13 +195,17 @@ enum PagesBridge {
 
         guard let raw = runAppleScript(script) else { return }
         let count = Int(raw.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
-        JSONOutput.success(["replacements": count, "path": file])
+        JSONOutput.success(["replacements": count, "path": resolvedFile])
     }
 
     // MARK: - Insert Table
 
     static func insertTable(file: String, dataJSON: String) {
-        let escapedFile = escapeForAppleScript(file)
+        guard let resolvedFile = FilesBridge.validatePath(file) else {
+            JSONOutput.error("Path is outside home directory or does not exist: \(file)")
+            return
+        }
+        let escapedFile = escapeForAppleScript(resolvedFile)
 
         guard let jsonData = dataJSON.data(using: .utf8),
               let parsed = try? JSONSerialization.jsonObject(with: jsonData) as? [[Any]] else {
@@ -205,7 +229,7 @@ enum PagesBridge {
                 } else if let str = val as? String {
                     cellVal = "\"\(escapeForAppleScript(str))\""
                 } else {
-                    cellVal = "\"\(val)\""
+                    cellVal = "\"\(escapeForAppleScript(String(describing: val)))\""
                 }
                 cellScripts.append("set value of cell \(c + 1) of row \(r + 1) of newTable to \(cellVal)")
             }
@@ -228,7 +252,7 @@ enum PagesBridge {
 
         guard let _ = runAppleScript(script) else { return }
         JSONOutput.success([
-            "path": file,
+            "path": resolvedFile,
             "rows": rowCount,
             "columns": colCount,
             "inserted": true
@@ -238,7 +262,11 @@ enum PagesBridge {
     // MARK: - List Sections
 
     static func listSections(file: String) {
-        let escaped = escapeForAppleScript(file)
+        guard let resolvedFile = FilesBridge.validatePath(file) else {
+            JSONOutput.error("Path is outside home directory or does not exist: \(file)")
+            return
+        }
+        let escaped = escapeForAppleScript(resolvedFile)
         let script = """
         tell application "Pages"
             set doc to open POSIX file "\(escaped)"
@@ -271,10 +299,18 @@ enum PagesBridge {
     // MARK: - Export
 
     static func export(file: String, format: String, dest: String?) {
-        let escapedFile = escapeForAppleScript(file)
+        guard let resolvedFile = FilesBridge.validatePath(file) else {
+            JSONOutput.error("Path is outside home directory or does not exist: \(file)")
+            return
+        }
+        let escapedFile = escapeForAppleScript(resolvedFile)
         let outputPath: String
         if let dest = dest {
-            outputPath = dest
+            guard let resolvedDest = FilesBridge.validatePath(dest, mustExist: false) else {
+                JSONOutput.error("Destination path is outside home directory: \(dest)")
+                return
+            }
+            outputPath = resolvedDest
         } else {
             let ext: String
             switch format {
@@ -284,7 +320,7 @@ enum PagesBridge {
             case "epub": ext = "epub"
             default: ext = format
             }
-            outputPath = file.replacingOccurrences(of: ".pages", with: ".\(ext)")
+            outputPath = resolvedFile.replacingOccurrences(of: ".pages", with: ".\(ext)")
         }
         let escapedOutput = escapeForAppleScript(outputPath)
 
@@ -315,10 +351,12 @@ enum PagesBridge {
     // MARK: - Search
 
     static func search(query: String, limit: Int) {
+        let sanitized = query.replacingOccurrences(of: "'", with: "")
+                             .replacingOccurrences(of: "\\", with: "")
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/mdfind")
         task.arguments = [
-            "kMDItemContentType == 'com.apple.iWork.pages.sffpages' && kMDItemDisplayName == '*\(query)*'cd"
+            "kMDItemContentType == 'com.apple.iWork.pages.sffpages' && kMDItemDisplayName == '*\(sanitized)*'cd"
         ]
 
         let pipe = Pipe()
@@ -405,6 +443,9 @@ enum PagesBridge {
     private static func escapeForAppleScript(_ str: String) -> String {
         return str.replacingOccurrences(of: "\\", with: "\\\\")
                   .replacingOccurrences(of: "\"", with: "\\\"")
+                  .replacingOccurrences(of: "\n", with: "\\n")
+                  .replacingOccurrences(of: "\r", with: "\\r")
+                  .replacingOccurrences(of: "\t", with: "\\t")
     }
 
     // MARK: - Parsers

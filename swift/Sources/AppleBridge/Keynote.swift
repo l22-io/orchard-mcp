@@ -5,7 +5,11 @@ enum KeynoteBridge {
     // MARK: - Info
 
     static func info(file: String) {
-        let escaped = escapeForAppleScript(file)
+        guard let resolvedFile = FilesBridge.validatePath(file) else {
+            JSONOutput.error("Path is outside home directory or does not exist: \(file)")
+            return
+        }
+        let escaped = escapeForAppleScript(resolvedFile)
         let script = """
         tell application "Keynote"
             set doc to open POSIX file "\(escaped)"
@@ -28,7 +32,7 @@ enum KeynoteBridge {
             "name": parts[0].trimmingCharacters(in: .whitespaces),
             "slideCount": Int(parts[1].trimmingCharacters(in: .whitespaces)) ?? 0,
             "theme": parts[2].trimmingCharacters(in: .whitespaces),
-            "path": file
+            "path": resolvedFile
         ]
         JSONOutput.success(result)
     }
@@ -36,7 +40,11 @@ enum KeynoteBridge {
     // MARK: - Read
 
     static func read(file: String, slideIndex: Int?) {
-        let escaped = escapeForAppleScript(file)
+        guard let resolvedFile = FilesBridge.validatePath(file) else {
+            JSONOutput.error("Path is outside home directory or does not exist: \(file)")
+            return
+        }
+        let escaped = escapeForAppleScript(resolvedFile)
 
         let slideScript: String
         if let idx = slideIndex {
@@ -90,7 +98,11 @@ enum KeynoteBridge {
     // MARK: - Create
 
     static func create(file: String, theme: String?) {
-        let escaped = escapeForAppleScript(file)
+        guard let resolvedFile = FilesBridge.validatePath(file, mustExist: false) else {
+            JSONOutput.error("Path is outside home directory: \(file)")
+            return
+        }
+        let escaped = escapeForAppleScript(resolvedFile)
 
         let themeClause: String
         if let theme = theme {
@@ -110,13 +122,17 @@ enum KeynoteBridge {
         """
 
         guard let _ = runAppleScript(script) else { return }
-        JSONOutput.success(["path": file, "created": true])
+        JSONOutput.success(["path": resolvedFile, "created": true])
     }
 
     // MARK: - Add Slide
 
     static func addSlide(file: String, layout: String?, title: String?, body: String?, notes: String?, position: Int?) {
-        let escaped = escapeForAppleScript(file)
+        guard let resolvedFile = FilesBridge.validatePath(file) else {
+            JSONOutput.error("Path is outside home directory or does not exist: \(file)")
+            return
+        }
+        let escaped = escapeForAppleScript(resolvedFile)
 
         let makeClause: String
         if let pos = position {
@@ -184,13 +200,17 @@ enum KeynoteBridge {
 
         guard let raw = runAppleScript(script) else { return }
         let slideCount = Int(raw.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
-        JSONOutput.success(["path": file, "slideCount": slideCount])
+        JSONOutput.success(["path": resolvedFile, "slideCount": slideCount])
     }
 
     // MARK: - Edit Slide
 
     static func editSlide(file: String, slideIndex: Int, title: String?, body: String?, notes: String?) {
-        let escaped = escapeForAppleScript(file)
+        guard let resolvedFile = FilesBridge.validatePath(file) else {
+            JSONOutput.error("Path is outside home directory or does not exist: \(file)")
+            return
+        }
+        let escaped = escapeForAppleScript(resolvedFile)
 
         let titleClause: String
         if let title = title {
@@ -237,13 +257,17 @@ enum KeynoteBridge {
         """
 
         guard let _ = runAppleScript(script) else { return }
-        JSONOutput.success(["path": file, "slide": slideIndex, "edited": true])
+        JSONOutput.success(["path": resolvedFile, "slide": slideIndex, "edited": true])
     }
 
     // MARK: - Remove Slide
 
     static func removeSlide(file: String, slideIndex: Int) {
-        let escaped = escapeForAppleScript(file)
+        guard let resolvedFile = FilesBridge.validatePath(file) else {
+            JSONOutput.error("Path is outside home directory or does not exist: \(file)")
+            return
+        }
+        let escaped = escapeForAppleScript(resolvedFile)
         let script = """
         tell application "Keynote"
             set doc to open POSIX file "\(escaped)"
@@ -257,13 +281,17 @@ enum KeynoteBridge {
 
         guard let raw = runAppleScript(script) else { return }
         let remaining = Int(raw.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
-        JSONOutput.success(["path": file, "remainingSlides": remaining])
+        JSONOutput.success(["path": resolvedFile, "remainingSlides": remaining])
     }
 
     // MARK: - Reorder Slides
 
     static func reorderSlides(file: String, from: Int, to: Int) {
-        let escaped = escapeForAppleScript(file)
+        guard let resolvedFile = FilesBridge.validatePath(file) else {
+            JSONOutput.error("Path is outside home directory or does not exist: \(file)")
+            return
+        }
+        let escaped = escapeForAppleScript(resolvedFile)
 
         let moveClause: String
         if to < from {
@@ -283,7 +311,7 @@ enum KeynoteBridge {
         """
 
         guard let _ = runAppleScript(script) else { return }
-        JSONOutput.success(["path": file, "movedFrom": from, "movedTo": to])
+        JSONOutput.success(["path": resolvedFile, "movedFrom": from, "movedTo": to])
     }
 
     // MARK: - List Themes
@@ -310,18 +338,26 @@ enum KeynoteBridge {
     // MARK: - Export
 
     static func export(file: String, format: String, dest: String?, slideIndex: Int?) {
-        let escapedFile = escapeForAppleScript(file)
+        guard let resolvedFile = FilesBridge.validatePath(file) else {
+            JSONOutput.error("Path is outside home directory or does not exist: \(file)")
+            return
+        }
+        let escapedFile = escapeForAppleScript(resolvedFile)
 
         let isImageExport = (format == "png" || format == "jpeg")
 
         if isImageExport && slideIndex == nil {
-            exportSlideImages(file: file, format: format, dest: dest)
+            exportSlideImages(file: resolvedFile, format: format, dest: dest)
             return
         }
 
         let outputPath: String
         if let dest = dest {
-            outputPath = dest
+            guard let resolvedDest = FilesBridge.validatePath(dest, mustExist: false) else {
+                JSONOutput.error("Destination path is outside home directory: \(dest)")
+                return
+            }
+            outputPath = resolvedDest
         } else {
             let ext: String
             switch format {
@@ -331,7 +367,7 @@ enum KeynoteBridge {
             case "jpeg": ext = "jpeg"
             default: ext = format
             }
-            outputPath = file.replacingOccurrences(of: ".key", with: ".\(ext)")
+            outputPath = resolvedFile.replacingOccurrences(of: ".key", with: ".\(ext)")
         }
         let escapedOutput = escapeForAppleScript(outputPath)
 
@@ -390,7 +426,11 @@ enum KeynoteBridge {
         let escapedFile = escapeForAppleScript(file)
         let outputDir: String
         if let dest = dest {
-            outputDir = dest
+            guard let resolvedDest = FilesBridge.validatePath(dest, mustExist: false) else {
+                JSONOutput.error("Destination path is outside home directory: \(dest)")
+                return
+            }
+            outputDir = resolvedDest
         } else {
             let base = file.replacingOccurrences(of: ".key", with: "_slides")
             outputDir = base
@@ -438,10 +478,12 @@ enum KeynoteBridge {
     // MARK: - Search
 
     static func search(query: String, limit: Int) {
+        let sanitized = query.replacingOccurrences(of: "'", with: "")
+                             .replacingOccurrences(of: "\\", with: "")
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/mdfind")
         task.arguments = [
-            "kMDItemContentType == 'com.apple.iWork.keynote.sffkey' && kMDItemDisplayName == '*\(query)*'cd"
+            "kMDItemContentType == 'com.apple.iWork.keynote.sffkey' && kMDItemDisplayName == '*\(sanitized)*'cd"
         ]
 
         let pipe = Pipe()
@@ -528,6 +570,9 @@ enum KeynoteBridge {
     private static func escapeForAppleScript(_ str: String) -> String {
         return str.replacingOccurrences(of: "\\", with: "\\\\")
                   .replacingOccurrences(of: "\"", with: "\\\"")
+                  .replacingOccurrences(of: "\n", with: "\\n")
+                  .replacingOccurrences(of: "\r", with: "\\r")
+                  .replacingOccurrences(of: "\t", with: "\\t")
     }
 
     // MARK: - Parsers

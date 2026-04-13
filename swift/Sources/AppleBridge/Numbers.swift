@@ -5,7 +5,11 @@ enum NumbersBridge {
     // MARK: - Info
 
     static func info(file: String) {
-        let escaped = escapeForAppleScript(file)
+        guard let resolvedFile = FilesBridge.validatePath(file) else {
+            JSONOutput.error("Path is outside home directory or does not exist: \(file)")
+            return
+        }
+        let escaped = escapeForAppleScript(resolvedFile)
         let script = """
         tell application "Numbers"
             set doc to open POSIX file "\(escaped)"
@@ -32,7 +36,7 @@ enum NumbersBridge {
             "name": parts[0],
             "sheetCount": Int(parts[1].trimmingCharacters(in: .whitespaces)) ?? 0,
             "tableCount": Int(parts[2].trimmingCharacters(in: .whitespaces)) ?? 0,
-            "path": file
+            "path": resolvedFile
         ]
         JSONOutput.success(result)
     }
@@ -40,7 +44,11 @@ enum NumbersBridge {
     // MARK: - List Sheets
 
     static func listSheets(file: String) {
-        let escaped = escapeForAppleScript(file)
+        guard let resolvedFile = FilesBridge.validatePath(file) else {
+            JSONOutput.error("Path is outside home directory or does not exist: \(file)")
+            return
+        }
+        let escaped = escapeForAppleScript(resolvedFile)
         let script = """
         tell application "Numbers"
             set doc to open POSIX file "\(escaped)"
@@ -77,7 +85,11 @@ enum NumbersBridge {
     // MARK: - Read (JXA)
 
     static func read(file: String, sheet: String?, table: String?, range: String?) {
-        let escapedFile = escapeForJXA(file)
+        guard let resolvedFile = FilesBridge.validatePath(file) else {
+            JSONOutput.error("Path is outside home directory or does not exist: \(file)")
+            return
+        }
+        let escapedFile = escapeForJXA(resolvedFile)
         let sheetSelector = sheet != nil ? "sheets.byName(\"\(escapeForJXA(sheet!))\")" : "sheets[0]"
         let tableSelector = table != nil ? "tables.byName(\"\(escapeForJXA(table!))\")" : "tables[0]"
 
@@ -134,7 +146,11 @@ enum NumbersBridge {
     // MARK: - Write (JXA)
 
     static func write(file: String, sheet: String?, table: String?, range: String?, dataJSON: String) {
-        let escapedFile = escapeForJXA(file)
+        guard let resolvedFile = FilesBridge.validatePath(file) else {
+            JSONOutput.error("Path is outside home directory or does not exist: \(file)")
+            return
+        }
+        let escapedFile = escapeForJXA(resolvedFile)
         let sheetSelector = sheet != nil ? "sheets.byName(\"\(escapeForJXA(sheet!))\")" : "sheets[0]"
         let tableSelector = table != nil ? "tables.byName(\"\(escapeForJXA(table!))\")" : "tables[0]"
 
@@ -146,9 +162,7 @@ enum NumbersBridge {
             startPos = "var startRow = 0; var startCol = 0;"
         }
 
-        let escapedData = dataJSON.replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-            .replacingOccurrences(of: "\n", with: "\\n")
+        let escapedData = escapeForJXA(dataJSON)
 
         let script = """
         var app = Application("Numbers");
@@ -181,7 +195,11 @@ enum NumbersBridge {
     // MARK: - Get Formulas (JXA)
 
     static func getFormulas(file: String, sheet: String?, table: String?, range: String?) {
-        let escapedFile = escapeForJXA(file)
+        guard let resolvedFile = FilesBridge.validatePath(file) else {
+            JSONOutput.error("Path is outside home directory or does not exist: \(file)")
+            return
+        }
+        let escapedFile = escapeForJXA(resolvedFile)
         let sheetSelector = sheet != nil ? "sheets.byName(\"\(escapeForJXA(sheet!))\")" : "sheets[0]"
         let tableSelector = table != nil ? "tables.byName(\"\(escapeForJXA(table!))\")" : "tables[0]"
 
@@ -238,7 +256,11 @@ enum NumbersBridge {
     // MARK: - Create
 
     static func create(file: String, dataJSON: String?, template: String?) {
-        let escaped = escapeForAppleScript(file)
+        guard let resolvedFile = FilesBridge.validatePath(file, mustExist: false) else {
+            JSONOutput.error("Path is outside home directory: \(file)")
+            return
+        }
+        let escaped = escapeForAppleScript(resolvedFile)
 
         let templateClause: String
         if let template = template {
@@ -260,17 +282,21 @@ enum NumbersBridge {
         guard let _ = runAppleScript(script) else { return }
 
         if let dataJSON = dataJSON, !dataJSON.isEmpty {
-            write(file: file, sheet: nil, table: nil, range: nil, dataJSON: dataJSON)
+            write(file: resolvedFile, sheet: nil, table: nil, range: nil, dataJSON: dataJSON)
             return
         }
 
-        JSONOutput.success(["path": file, "created": true])
+        JSONOutput.success(["path": resolvedFile, "created": true])
     }
 
     // MARK: - Add Sheet
 
     static func addSheet(file: String, name: String) {
-        let escapedFile = escapeForAppleScript(file)
+        guard let resolvedFile = FilesBridge.validatePath(file) else {
+            JSONOutput.error("Path is outside home directory or does not exist: \(file)")
+            return
+        }
+        let escapedFile = escapeForAppleScript(resolvedFile)
         let escapedName = escapeForAppleScript(name)
         let script = """
         tell application "Numbers"
@@ -291,7 +317,11 @@ enum NumbersBridge {
     // MARK: - Remove Sheet
 
     static func removeSheet(file: String, name: String) {
-        let escapedFile = escapeForAppleScript(file)
+        guard let resolvedFile = FilesBridge.validatePath(file) else {
+            JSONOutput.error("Path is outside home directory or does not exist: \(file)")
+            return
+        }
+        let escapedFile = escapeForAppleScript(resolvedFile)
         let escapedName = escapeForAppleScript(name)
         let script = """
         tell application "Numbers"
@@ -312,10 +342,18 @@ enum NumbersBridge {
     // MARK: - Export
 
     static func export(file: String, format: String, dest: String?) {
-        let escapedFile = escapeForAppleScript(file)
+        guard let resolvedFile = FilesBridge.validatePath(file) else {
+            JSONOutput.error("Path is outside home directory or does not exist: \(file)")
+            return
+        }
+        let escapedFile = escapeForAppleScript(resolvedFile)
         let outputPath: String
         if let dest = dest {
-            outputPath = dest
+            guard let resolvedDest = FilesBridge.validatePath(dest, mustExist: false) else {
+                JSONOutput.error("Destination path is outside home directory: \(dest)")
+                return
+            }
+            outputPath = resolvedDest
         } else {
             let ext: String
             switch format {
@@ -324,7 +362,7 @@ enum NumbersBridge {
             case "xlsx": ext = "xlsx"
             default: ext = format
             }
-            outputPath = file.replacingOccurrences(of: ".numbers", with: ".\(ext)")
+            outputPath = resolvedFile.replacingOccurrences(of: ".numbers", with: ".\(ext)")
         }
         let escapedOutput = escapeForAppleScript(outputPath)
 
@@ -354,10 +392,12 @@ enum NumbersBridge {
     // MARK: - Search
 
     static func search(query: String, limit: Int) {
+        let sanitized = query.replacingOccurrences(of: "'", with: "")
+                             .replacingOccurrences(of: "\\", with: "")
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/mdfind")
         task.arguments = [
-            "kMDItemContentType == 'com.apple.iWork.numbers.sffnumbers' && kMDItemDisplayName == '*\(query)*'cd"
+            "kMDItemContentType == 'com.apple.iWork.numbers.sffnumbers' && kMDItemDisplayName == '*\(sanitized)*'cd"
         ]
 
         let pipe = Pipe()
@@ -477,12 +517,20 @@ enum NumbersBridge {
     private static func escapeForAppleScript(_ str: String) -> String {
         return str.replacingOccurrences(of: "\\", with: "\\\\")
                   .replacingOccurrences(of: "\"", with: "\\\"")
+                  .replacingOccurrences(of: "\n", with: "\\n")
+                  .replacingOccurrences(of: "\r", with: "\\r")
+                  .replacingOccurrences(of: "\t", with: "\\t")
     }
 
     private static func escapeForJXA(_ str: String) -> String {
         return str.replacingOccurrences(of: "\\", with: "\\\\")
                   .replacingOccurrences(of: "\"", with: "\\\"")
                   .replacingOccurrences(of: "\n", with: "\\n")
+                  .replacingOccurrences(of: "\r", with: "\\r")
+                  .replacingOccurrences(of: "\t", with: "\\t")
+                  .replacingOccurrences(of: "\0", with: "")
+                  .replacingOccurrences(of: "\u{2028}", with: "\\u2028")
+                  .replacingOccurrences(of: "\u{2029}", with: "\\u2029")
     }
 
     // MARK: - A1 Range Parser
