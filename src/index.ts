@@ -14,6 +14,7 @@ import { registerMailTools } from "./tools/mail.js";
 import { registerReminderTools } from "./tools/reminders.js";
 import { registerSystemTools } from "./tools/system.js";
 import { registerFileTools } from "./tools/files.js";
+import { registerNumbersTools } from "./tools/numbers.js";
 
 const server = new McpServer({
   name: "orchard-mcp",
@@ -25,6 +26,7 @@ registerMailTools(server);
 registerReminderTools(server);
 registerSystemTools(server);
 registerFileTools(server);
+registerNumbersTools(server);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
