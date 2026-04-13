@@ -27,7 +27,7 @@ struct AppleBridge: AsyncParsableCommand {
 
     static let configuration = CommandConfiguration(
         commandName: "apple-bridge",
-        abstract: "Native macOS bridge for Apple Calendar, Mail, Reminders, and Numbers.",
+        abstract: "Native macOS bridge for Apple Calendar, Mail, Reminders, Numbers, and Pages.",
         version: "0.3.0",
         subcommands: [
             Calendars.self,
@@ -68,6 +68,16 @@ struct AppleBridge: AsyncParsableCommand {
             NumbersGetFormulas.self,
             NumbersExport.self,
             NumbersInfo.self,
+            // Pages
+            PagesSearch.self,
+            PagesRead.self,
+            PagesWrite.self,
+            PagesCreate.self,
+            PagesFindReplace.self,
+            PagesInsertTable.self,
+            PagesListSections.self,
+            PagesExport.self,
+            PagesInfo.self,
         ]
     )
 }
@@ -611,4 +621,71 @@ struct NumbersInfo: ParsableCommand {
     static let configuration = CommandConfiguration(commandName: "numbers-info", abstract: "Get metadata about a Numbers spreadsheet.")
     @Option(name: .long, help: "Path to .numbers file") var file: String
     func run() throws { NumbersBridge.info(file: file) }
+}
+
+// MARK: - Pages Subcommands
+
+struct PagesSearch: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "pages-search", abstract: "Search for Pages documents using Spotlight.")
+    @Option(name: .long, help: "Search query") var query: String
+    @Option(name: .long, help: "Max results (default: 20)") var limit: Int = 20
+    func run() throws { PagesBridge.search(query: query, limit: limit) }
+}
+
+struct PagesRead: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "pages-read", abstract: "Read body text from a Pages document.")
+    @Option(name: .long, help: "Path to .pages file") var file: String
+    func run() throws { PagesBridge.read(file: file) }
+}
+
+struct PagesWrite: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "pages-write", abstract: "Set the body text of a Pages document.")
+    @Option(name: .long, help: "Path to .pages file") var file: String
+    @Option(name: .long, help: "Text to write") var text: String
+    func run() throws { PagesBridge.write(file: file, text: text) }
+}
+
+struct PagesCreate: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "pages-create", abstract: "Create a new Pages document.")
+    @Option(name: .long, help: "Output file path") var file: String
+    @Option(name: .long, help: "Initial body text") var text: String?
+    @Option(name: .long, help: "Template name") var template: String?
+    func run() throws { PagesBridge.create(file: file, text: text, template: template) }
+}
+
+struct PagesFindReplace: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "pages-find-replace", abstract: "Find and replace text in a Pages document.")
+    @Option(name: .long, help: "Path to .pages file") var file: String
+    @Option(name: .long, help: "Text to find") var find: String
+    @Option(name: .long, help: "Replacement text") var replace: String
+    @Flag(name: .long, help: "Replace all occurrences") var all: Bool = false
+    func run() throws { PagesBridge.findReplace(file: file, find: find, replace: replace, all: all) }
+}
+
+struct PagesInsertTable: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "pages-insert-table", abstract: "Insert a table into a Pages document.")
+    @Option(name: .long, help: "Path to .pages file") var file: String
+    @Option(name: .long, help: "Table data as JSON array of arrays") var data: String
+    @Option(name: .long, help: "Insert position (beginning or end)") var position: String?
+    func run() throws { PagesBridge.insertTable(file: file, dataJSON: data, position: position) }
+}
+
+struct PagesListSections: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "pages-list-sections", abstract: "List sections in a Pages document with previews.")
+    @Option(name: .long, help: "Path to .pages file") var file: String
+    func run() throws { PagesBridge.listSections(file: file) }
+}
+
+struct PagesExport: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "pages-export", abstract: "Export a Pages document to PDF, Word, TXT, or EPUB.")
+    @Option(name: .long, help: "Path to .pages file") var file: String
+    @Option(name: .long, help: "Export format: pdf, docx, txt, epub") var format: String
+    @Option(name: .long, help: "Output file path (default: same name with new extension)") var output: String?
+    func run() throws { PagesBridge.export(file: file, format: format, output: output) }
+}
+
+struct PagesInfo: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "pages-info", abstract: "Get metadata about a Pages document.")
+    @Option(name: .long, help: "Path to .pages file") var file: String
+    func run() throws { PagesBridge.info(file: file) }
 }
