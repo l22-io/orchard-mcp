@@ -6,6 +6,9 @@ import { registerMailTools } from "../src/tools/mail.js";
 import { registerReminderTools } from "../src/tools/reminders.js";
 import { registerSystemTools } from "../src/tools/system.js";
 import { registerFileTools } from "../src/tools/files.js";
+import { registerNumbersTools } from "../src/tools/numbers.js";
+import { registerPagesTools } from "../src/tools/pages.js";
+import { registerKeynoteTools } from "../src/tools/keynote.js";
 
 const EXPECTED_TOOLS = [
   // Calendar (4)
@@ -41,6 +44,39 @@ const EXPECTED_TOOLS = [
   "files.trash",
   // System (1)
   "system.doctor",
+  // Numbers (10)
+  "numbers.search",
+  "numbers.read",
+  "numbers.write",
+  "numbers.create",
+  "numbers.list_sheets",
+  "numbers.add_sheet",
+  "numbers.remove_sheet",
+  "numbers.get_formulas",
+  "numbers.export",
+  "numbers.info",
+  // Pages (9)
+  "pages.search",
+  "pages.read",
+  "pages.write",
+  "pages.create",
+  "pages.find_replace",
+  "pages.insert_table",
+  "pages.list_sections",
+  "pages.export",
+  "pages.info",
+  // Keynote (11)
+  "keynote.search",
+  "keynote.read",
+  "keynote.create",
+  "keynote.add_slide",
+  "keynote.edit_slide",
+  "keynote.remove_slide",
+  "keynote.reorder_slides",
+  "keynote.list_slides",
+  "keynote.list_themes",
+  "keynote.export",
+  "keynote.info",
 ];
 
 describe("tool registration", () => {
@@ -53,12 +89,15 @@ describe("tool registration", () => {
     registerReminderTools(server);
     registerSystemTools(server);
     registerFileTools(server);
+    registerNumbersTools(server);
+    registerPagesTools(server);
+    registerKeynoteTools(server);
   });
 
-  it("registers exactly 28 tools", () => {
+  it("registers exactly 58 tools", () => {
     const tools = (server as any)._registeredTools as Record<string, unknown>;
     const names = Object.keys(tools);
-    assert.equal(names.length, 28, `Expected 28 tools, got ${names.length}: ${names.join(", ")}`);
+    assert.equal(names.length, 58, `Expected 58 tools, got ${names.length}: ${names.join(", ")}`);
   });
 
   for (const name of EXPECTED_TOOLS) {
