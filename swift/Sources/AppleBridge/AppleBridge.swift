@@ -27,7 +27,7 @@ struct AppleBridge: AsyncParsableCommand {
 
     static let configuration = CommandConfiguration(
         commandName: "apple-bridge",
-        abstract: "Native macOS bridge for Apple Calendar, Mail, and Reminders.",
+        abstract: "Native macOS bridge for Apple Calendar, Mail, Reminders, and Numbers.",
         version: "0.3.0",
         subcommands: [
             Calendars.self,
@@ -56,7 +56,18 @@ struct AppleBridge: AsyncParsableCommand {
             FileCopy.self,
             FileCreateFolder.self,
             FileTrash.self,
-            Doctor.self
+            Doctor.self,
+            // Numbers
+            NumbersSearch.self,
+            NumbersRead.self,
+            NumbersWrite.self,
+            NumbersCreate.self,
+            NumbersListSheets.self,
+            NumbersAddSheet.self,
+            NumbersRemoveSheet.self,
+            NumbersGetFormulas.self,
+            NumbersExport.self,
+            NumbersInfo.self,
         ]
     )
 }
@@ -521,4 +532,83 @@ struct Doctor: AsyncParsableCommand {
     func run() async throws {
         await DoctorBridge.run()
     }
+}
+
+// MARK: - Numbers Subcommands
+
+struct NumbersSearch: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "numbers-search", abstract: "Search for Numbers spreadsheets using Spotlight.")
+    @Option(name: .long, help: "Search query") var query: String
+    @Option(name: .long, help: "Max results (default: 20)") var limit: Int = 20
+    func run() throws { NumbersBridge.search(query: query, limit: limit) }
+}
+
+struct NumbersRead: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "numbers-read", abstract: "Read cell data from a Numbers spreadsheet as JSON.")
+    @Option(name: .long, help: "Path to .numbers file") var file: String
+    @Option(name: .long, help: "Sheet name (default: first sheet)") var sheet: String?
+    @Option(name: .long, help: "Table name (default: first table)") var table: String?
+    @Option(name: .long, help: "Cell range in A1 notation (e.g. A1:C10)") var range: String?
+    func run() throws { NumbersBridge.read(file: file, sheet: sheet, table: table, range: range) }
+}
+
+struct NumbersWrite: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "numbers-write", abstract: "Write data to cells in a Numbers spreadsheet.")
+    @Option(name: .long, help: "Path to .numbers file") var file: String
+    @Option(name: .long, help: "Sheet name (default: first sheet)") var sheet: String?
+    @Option(name: .long, help: "Table name (default: first table)") var table: String?
+    @Option(name: .long, help: "Starting cell in A1 notation (e.g. A1)") var range: String?
+    @Option(name: .long, help: "JSON array of arrays with cell data") var data: String
+    func run() throws { NumbersBridge.write(file: file, sheet: sheet, table: table, range: range, dataJSON: data) }
+}
+
+struct NumbersCreate: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "numbers-create", abstract: "Create a new Numbers spreadsheet.")
+    @Option(name: .long, help: "Output file path") var file: String
+    @Option(name: .long, help: "Initial data as JSON array of arrays") var data: String?
+    @Option(name: .long, help: "Template name") var template: String?
+    func run() throws { NumbersBridge.create(file: file, dataJSON: data, template: template) }
+}
+
+struct NumbersListSheets: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "numbers-list-sheets", abstract: "List all sheets and tables in a Numbers document.")
+    @Option(name: .long, help: "Path to .numbers file") var file: String
+    func run() throws { NumbersBridge.listSheets(file: file) }
+}
+
+struct NumbersAddSheet: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "numbers-add-sheet", abstract: "Add a new sheet to a Numbers document.")
+    @Option(name: .long, help: "Path to .numbers file") var file: String
+    @Option(name: .long, help: "Name for the new sheet") var name: String
+    func run() throws { NumbersBridge.addSheet(file: file, name: name) }
+}
+
+struct NumbersRemoveSheet: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "numbers-remove-sheet", abstract: "Remove a sheet from a Numbers document.")
+    @Option(name: .long, help: "Path to .numbers file") var file: String
+    @Option(name: .long, help: "Sheet name to remove") var name: String
+    func run() throws { NumbersBridge.removeSheet(file: file, name: name) }
+}
+
+struct NumbersGetFormulas: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "numbers-get-formulas", abstract: "Read formulas from cells in a Numbers spreadsheet.")
+    @Option(name: .long, help: "Path to .numbers file") var file: String
+    @Option(name: .long, help: "Sheet name (default: first sheet)") var sheet: String?
+    @Option(name: .long, help: "Table name (default: first table)") var table: String?
+    @Option(name: .long, help: "Cell range in A1 notation") var range: String?
+    func run() throws { NumbersBridge.getFormulas(file: file, sheet: sheet, table: table, range: range) }
+}
+
+struct NumbersExport: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "numbers-export", abstract: "Export a Numbers spreadsheet to CSV, PDF, or Excel.")
+    @Option(name: .long, help: "Path to .numbers file") var file: String
+    @Option(name: .long, help: "Export format: csv, pdf, xlsx") var format: String
+    @Option(name: .long, help: "Output file path (default: same name with new extension)") var output: String?
+    func run() throws { NumbersBridge.export(file: file, format: format, output: output) }
+}
+
+struct NumbersInfo: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "numbers-info", abstract: "Get metadata about a Numbers spreadsheet.")
+    @Option(name: .long, help: "Path to .numbers file") var file: String
+    func run() throws { NumbersBridge.info(file: file) }
 }
