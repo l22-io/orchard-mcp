@@ -123,14 +123,9 @@ export function registerPagesTools(server: McpServer): void {
       data: z
         .string()
         .describe("Table data as JSON array of arrays (e.g. [[\"Name\",\"Age\"],[\"Alice\",30]])"),
-      position: z
-        .string()
-        .optional()
-        .describe("Insert position (beginning or end)"),
     },
-    async ({ file, data: tableData, position }) => {
+    async ({ file, data: tableData }) => {
       const args = ["pages-insert-table", "--file", file, "--data", tableData];
-      if (position) args.push("--position", position);
       const result = await bridgeData(args);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],

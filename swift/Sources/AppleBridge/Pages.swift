@@ -177,7 +177,7 @@ enum PagesBridge {
 
     // MARK: - Insert Table
 
-    static func insertTable(file: String, dataJSON: String, position: String?) {
+    static func insertTable(file: String, dataJSON: String) {
         let escapedFile = escapeForAppleScript(file)
 
         guard let jsonData = dataJSON.data(using: .utf8),

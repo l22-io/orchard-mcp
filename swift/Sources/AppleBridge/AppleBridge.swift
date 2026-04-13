@@ -678,8 +678,7 @@ struct PagesInsertTable: ParsableCommand {
     static let configuration = CommandConfiguration(commandName: "pages-insert-table", abstract: "Insert a table into a Pages document.")
     @Option(name: .long, help: "Path to .pages file") var file: String
     @Option(name: .long, help: "Table data as JSON array of arrays") var data: String
-    @Option(name: .long, help: "Insert position (beginning or end)") var position: String?
-    func run() throws { PagesBridge.insertTable(file: file, dataJSON: data, position: position) }
+    func run() throws { PagesBridge.insertTable(file: file, dataJSON: data) }
 }
 
 struct PagesListSections: ParsableCommand {

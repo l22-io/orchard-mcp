@@ -97,8 +97,7 @@ enum NumbersBridge {
 
         let script = """
         var app = Application("Numbers");
-        app.open(Path("\(escapedFile)"));
-        var doc = app.documents[0];
+        var doc = app.open(Path("\(escapedFile)"));
         var sht = doc.\(sheetSelector);
         var tbl = sht.\(tableSelector);
         \(rangeClause)
@@ -153,8 +152,7 @@ enum NumbersBridge {
 
         let script = """
         var app = Application("Numbers");
-        app.open(Path("\(escapedFile)"));
-        var doc = app.documents[0];
+        var doc = app.open(Path("\(escapedFile)"));
         var sht = doc.\(sheetSelector);
         var tbl = sht.\(tableSelector);
         \(startPos)
@@ -203,8 +201,7 @@ enum NumbersBridge {
 
         let script = """
         var app = Application("Numbers");
-        app.open(Path("\(escapedFile)"));
-        var doc = app.documents[0];
+        var doc = app.open(Path("\(escapedFile)"));
         var sht = doc.\(sheetSelector);
         var tbl = sht.\(tableSelector);
         \(rangeClause)
