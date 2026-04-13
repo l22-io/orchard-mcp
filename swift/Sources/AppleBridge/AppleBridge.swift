@@ -625,8 +625,8 @@ struct NumbersExport: ParsableCommand {
     static let configuration = CommandConfiguration(commandName: "numbers-export", abstract: "Export a Numbers spreadsheet to CSV, PDF, or Excel.")
     @Option(name: .long, help: "Path to .numbers file") var file: String
     @Option(name: .long, help: "Export format: csv, pdf, xlsx") var format: String
-    @Option(name: .long, help: "Output file path (default: same name with new extension)") var output: String?
-    func run() throws { NumbersBridge.export(file: file, format: format, output: output) }
+    @Option(name: .long, help: "Output file path (default: same name with new extension)") var dest: String?
+    func run() throws { NumbersBridge.export(file: file, format: format, dest: dest) }
 }
 
 struct NumbersInfo: ParsableCommand {
@@ -691,8 +691,8 @@ struct PagesExport: ParsableCommand {
     static let configuration = CommandConfiguration(commandName: "pages-export", abstract: "Export a Pages document to PDF, Word, TXT, or EPUB.")
     @Option(name: .long, help: "Path to .pages file") var file: String
     @Option(name: .long, help: "Export format: pdf, docx, txt, epub") var format: String
-    @Option(name: .long, help: "Output file path (default: same name with new extension)") var output: String?
-    func run() throws { PagesBridge.export(file: file, format: format, output: output) }
+    @Option(name: .long, help: "Output file path (default: same name with new extension)") var dest: String?
+    func run() throws { PagesBridge.export(file: file, format: format, dest: dest) }
 }
 
 struct PagesInfo: ParsableCommand {
@@ -775,9 +775,9 @@ struct KeynoteExport: ParsableCommand {
     static let configuration = CommandConfiguration(commandName: "keynote-export", abstract: "Export a Keynote presentation to PDF, PowerPoint, PNG, or JPEG.")
     @Option(name: .long, help: "Path to .key file") var file: String
     @Option(name: .long, help: "Export format: pdf, pptx, png, jpeg") var format: String
-    @Option(name: .long, help: "Output file or directory path") var output: String?
+    @Option(name: .long, help: "Output file or directory path") var dest: String?
     @Option(name: .long, help: "Export only this slide index (1-based, for image formats)") var slide: Int?
-    func run() throws { KeynoteBridge.export(file: file, format: format, output: output, slideIndex: slide) }
+    func run() throws { KeynoteBridge.export(file: file, format: format, dest: dest, slideIndex: slide) }
 }
 
 struct KeynoteInfo: ParsableCommand {

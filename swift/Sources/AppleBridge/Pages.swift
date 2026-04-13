@@ -267,11 +267,11 @@ enum PagesBridge {
 
     // MARK: - Export
 
-    static func export(file: String, format: String, output: String?) {
+    static func export(file: String, format: String, dest: String?) {
         let escapedFile = escapeForAppleScript(file)
         let outputPath: String
-        if let output = output {
-            outputPath = output
+        if let dest = dest {
+            outputPath = dest
         } else {
             let ext: String
             switch format {

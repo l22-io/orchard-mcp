@@ -205,7 +205,7 @@ export function registerKeynoteTools(server: McpServer): void {
       format: z
         .enum(["pdf", "pptx", "png", "jpeg"])
         .describe("Export format: pdf, pptx, png, or jpeg"),
-      output: z
+      dest: z
         .string()
         .optional()
         .describe("Output file or directory path (defaults to same directory as input)"),
@@ -214,9 +214,9 @@ export function registerKeynoteTools(server: McpServer): void {
         .optional()
         .describe("Export only this slide index (1-based, for image formats)"),
     },
-    async ({ file, format, output, slide }) => {
+    async ({ file, format, dest, slide }) => {
       const args = ["keynote-export", "--file", file, "--format", format];
-      if (output) args.push("--output", output);
+      if (dest) args.push("--dest", dest);
       if (slide !== undefined) args.push("--slide", String(slide));
       const data = await bridgeData(args);
       return {

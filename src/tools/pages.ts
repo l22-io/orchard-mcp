@@ -155,14 +155,14 @@ export function registerPagesTools(server: McpServer): void {
       format: z
         .enum(["pdf", "docx", "txt", "epub"])
         .describe("Export format: pdf, docx, txt, or epub"),
-      output: z
+      dest: z
         .string()
         .optional()
         .describe("Output file path (defaults to same directory as input)"),
     },
-    async ({ file, format, output }) => {
+    async ({ file, format, dest }) => {
       const args = ["pages-export", "--file", file, "--format", format];
-      if (output) args.push("--output", output);
+      if (dest) args.push("--dest", dest);
       const data = await bridgeData(args);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],

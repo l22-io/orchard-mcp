@@ -118,7 +118,7 @@ enum NumbersBridge {
             rowCount: endRow - startRow + 1,
             columnCount: endCol - startCol + 1
         });
-        doc.close({saving: false});
+        doc.close({saving: "no"});
         result;
         """
 
@@ -165,7 +165,7 @@ enum NumbersBridge {
                 written++;
             }
         }
-        doc.close({saving: true});
+        doc.close({saving: "yes"});
         JSON.stringify({cellsWritten: written, rows: data.length, columns: data[0].length});
         """
 
@@ -222,7 +222,7 @@ enum NumbersBridge {
             rowCount: endRow - startRow + 1,
             columnCount: endCol - startCol + 1
         });
-        doc.close({saving: false});
+        doc.close({saving: "no"});
         result;
         """
 
@@ -311,11 +311,11 @@ enum NumbersBridge {
 
     // MARK: - Export
 
-    static func export(file: String, format: String, output: String?) {
+    static func export(file: String, format: String, dest: String?) {
         let escapedFile = escapeForAppleScript(file)
         let outputPath: String
-        if let output = output {
-            outputPath = output
+        if let dest = dest {
+            outputPath = dest
         } else {
             let ext: String
             switch format {

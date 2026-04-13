@@ -309,19 +309,19 @@ enum KeynoteBridge {
 
     // MARK: - Export
 
-    static func export(file: String, format: String, output: String?, slideIndex: Int?) {
+    static func export(file: String, format: String, dest: String?, slideIndex: Int?) {
         let escapedFile = escapeForAppleScript(file)
 
         let isImageExport = (format == "png" || format == "jpeg")
 
         if isImageExport && slideIndex == nil {
-            exportSlideImages(file: file, format: format, output: output)
+            exportSlideImages(file: file, format: format, dest: dest)
             return
         }
 
         let outputPath: String
-        if let output = output {
-            outputPath = output
+        if let dest = dest {
+            outputPath = dest
         } else {
             let ext: String
             switch format {
@@ -386,11 +386,11 @@ enum KeynoteBridge {
         JSONOutput.success(["path": outputPath])
     }
 
-    private static func exportSlideImages(file: String, format: String, output: String?) {
+    private static func exportSlideImages(file: String, format: String, dest: String?) {
         let escapedFile = escapeForAppleScript(file)
         let outputDir: String
-        if let output = output {
-            outputDir = output
+        if let dest = dest {
+            outputDir = dest
         } else {
             let base = file.replacingOccurrences(of: ".key", with: "_slides")
             outputDir = base
