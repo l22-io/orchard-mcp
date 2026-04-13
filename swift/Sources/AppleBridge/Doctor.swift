@@ -74,6 +74,14 @@ enum DoctorBridge {
         let mailCheck = checkMailAccess()
         report["mail"] = mailCheck
 
+        // iWork apps
+        let numbersCheck = checkIWorkApp("Numbers")
+        let pagesCheck = checkIWorkApp("Pages")
+        let keynoteCheck = checkIWorkApp("Keynote")
+        report["numbers"] = numbersCheck
+        report["pages"] = pagesCheck
+        report["keynote"] = keynoteCheck
+
         // Guidance
         var actions: [String] = []
         if calStatus != .fullAccess {
@@ -84,6 +92,15 @@ enum DoctorBridge {
         }
         if !(mailCheck["accessible"] as? Bool ?? false) {
             actions.append("Mail: Run apple-bridge with a mail subcommand to trigger the Automation permission dialog")
+        }
+        if !(numbersCheck["installed"] as? Bool ?? false) {
+            actions.append("Numbers: Install from App Store for spreadsheet tools")
+        }
+        if !(pagesCheck["installed"] as? Bool ?? false) {
+            actions.append("Pages: Install from App Store for document tools")
+        }
+        if !(keynoteCheck["installed"] as? Bool ?? false) {
+            actions.append("Keynote: Install from App Store for presentation tools")
         }
         if !actions.isEmpty {
             report["requiredActions"] = actions
@@ -100,6 +117,33 @@ enum DoctorBridge {
         case .fullAccess: return "fullAccess"
         case .writeOnly: return "writeOnly"
         @unknown default: return "unknown"
+        }
+    }
+
+    private static func checkIWorkApp(_ appName: String) -> [String: Any] {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        task.arguments = ["-e", "tell application \"\(appName)\" to return name"]
+        let outPipe = Pipe()
+        let errPipe = Pipe()
+        task.standardOutput = outPipe
+        task.standardError = errPipe
+
+        do {
+            try task.run()
+            task.waitUntilExit()
+            if task.terminationStatus == 0 {
+                return ["installed": true, "accessible": true]
+            } else {
+                let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
+                let errStr = String(data: errData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                if errStr.contains("-600") || errStr.contains("not running") {
+                    return ["installed": true, "accessible": false, "note": "\(appName) is not running."]
+                }
+                return ["installed": false, "accessible": false, "note": "\(appName) may not be installed."]
+            }
+        } catch {
+            return ["installed": false, "accessible": false, "note": "Could not check \(appName): \(error.localizedDescription)"]
         }
     }
 
