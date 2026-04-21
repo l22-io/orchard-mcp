@@ -22,7 +22,7 @@ import { registerContactsTools } from "./tools/contacts.js";
 
 const server = new McpServer({
   name: "orchard-mcp",
-  version: "0.4.0",
+  version: "0.5.0",
 });
 
 registerCalendarTools(server);
