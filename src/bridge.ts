@@ -13,9 +13,30 @@ const execFileAsync = promisify(execFile);
 // In npm package: swift/.build/release/apple-bridge (shipped alongside)
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+// Emit a one-time warning when binary path overrides are active: these env
+// vars grant arbitrary executables the TCC permissions granted to apple-bridge.
+let overrideWarned = false;
+function warnOverrideOnce(): void {
+  if (overrideWarned) return;
+  overrideWarned = true;
+  if (process.env.APPLE_BRIDGE_BIN) {
+    console.error(
+      `[orchard-mcp] WARNING: APPLE_BRIDGE_BIN override active ("${process.env.APPLE_BRIDGE_BIN}"). ` +
+      `This binary inherits all granted TCC permissions — ensure the path is trusted.`
+    );
+  }
+  if (process.env.APPLE_BRIDGE_APP) {
+    console.error(
+      `[orchard-mcp] WARNING: APPLE_BRIDGE_APP override active ("${process.env.APPLE_BRIDGE_APP}"). ` +
+      `This .app bundle inherits all granted TCC permissions — ensure the path is trusted.`
+    );
+  }
+}
+
 function getBridgePath(): string {
   // Reason: Allow override via env var for custom installations.
   if (process.env.APPLE_BRIDGE_BIN) {
+    warnOverrideOnce();
     return process.env.APPLE_BRIDGE_BIN;
   }
   // Default: use the binary inside the .app bundle (one level up from build/)
@@ -24,6 +45,7 @@ function getBridgePath(): string {
 
 function getAppBundlePath(): string {
   if (process.env.APPLE_BRIDGE_APP) {
+    warnOverrideOnce();
     return process.env.APPLE_BRIDGE_APP;
   }
   return resolve(__dirname, "..", "swift", ".build", "AppleBridge.app");

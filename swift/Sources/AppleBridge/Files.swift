@@ -181,10 +181,16 @@ enum FilesBridge {
 
     // MARK: - Search (Spotlight)
 
+    private static func sanitizeSpotlightQuery(_ query: String) -> String {
+        let forbidden = CharacterSet(charactersIn: "()'\"\\")
+        return query.components(separatedBy: forbidden).joined(separator: " ")
+    }
+
     static func search(query: String, kind: String?, scope: String?) {
         let scopeDir = scope.flatMap({ validatePath($0) }) ?? home
 
-        var mdfindQuery = query
+        let safeQuery = sanitizeSpotlightQuery(query)
+        var mdfindQuery = safeQuery
         if let kind = kind {
             let typeMap: [String: String] = [
                 "folder": "public.folder",
@@ -197,7 +203,7 @@ enum FilesBridge {
                 "spreadsheet": "public.spreadsheet",
             ]
             if let uti = typeMap[kind] {
-                mdfindQuery = "(\(query)) && (kMDItemContentTypeTree == '\(uti)')"
+                mdfindQuery = "(\(safeQuery)) && (kMDItemContentTypeTree == '\(uti)')"
             }
         }
 

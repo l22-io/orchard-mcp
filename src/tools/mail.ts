@@ -21,9 +21,12 @@ export function registerMailTools(server: McpServer): void {
     {
       limit: z
         .number()
+        .int()
+        .min(1)
+        .max(200)
         .optional()
         .describe(
-          "Max unread messages to return per account (default: 10)"
+          "Max unread messages to return per account (default: 10, max: 200)"
         ),
     },
     async ({ limit }) => {
@@ -59,10 +62,15 @@ export function registerMailTools(server: McpServer): void {
         .describe("Fields to search: subject, sender, body, or all (default: all)"),
       limit: z
         .number()
+        .int()
+        .min(1)
+        .max(200)
         .optional()
-        .describe("Max results to return (default: 20)"),
+        .describe("Max results to return (default: 20, max: 200)"),
       offset: z
         .number()
+        .int()
+        .min(0)
         .optional()
         .describe(
           "Number of results to skip (default: 0). Use with limit for pagination. When provided, response includes total count and hasMore flag."
@@ -101,8 +109,11 @@ export function registerMailTools(server: McpServer): void {
         .describe("Message ID (from mail.search or mail.unread_summary results)"),
       maxBodyLength: z
         .number()
+        .int()
+        .min(0)
+        .max(1_000_000)
         .optional()
-        .describe("Max body characters to return (default: 4000). Use 0 for unlimited."),
+        .describe("Max body characters to return (default: 4000, max: 1_000_000). Use 0 for unlimited."),
     },
     async ({ messageId, maxBodyLength }) => {
       const args = ["mail-message", "--id", messageId];
@@ -172,10 +183,15 @@ export function registerMailTools(server: McpServer): void {
     {
       limit: z
         .number()
+        .int()
+        .min(1)
+        .max(200)
         .optional()
-        .describe("Max results to return (default: 20)"),
+        .describe("Max results to return (default: 20, max: 200)"),
       offset: z
         .number()
+        .int()
+        .min(0)
         .optional()
         .describe(
           "Number of results to skip (default: 0). Use with limit for pagination. When provided, response includes total count and hasMore flag."
@@ -205,6 +221,8 @@ export function registerMailTools(server: McpServer): void {
         .describe("Message ID (from mail.search or mail.read_message results)"),
       index: z
         .number()
+        .int()
+        .min(0)
         .describe("Attachment index (0-based, from mail.read_message attachments array)"),
       path: z
         .string()

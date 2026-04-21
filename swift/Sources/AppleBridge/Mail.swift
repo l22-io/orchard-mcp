@@ -537,11 +537,9 @@ enum MailBridge {
             return
         }
         let escapedId = escapeForAppleScript(messageId)
-        let resolvedDir: String
-        if outputDir.hasPrefix("~") {
-            resolvedDir = (outputDir as NSString).expandingTildeInPath
-        } else {
-            resolvedDir = outputDir
+        guard let resolvedDir = FilesBridge.validatePath(outputDir, mustExist: false) else {
+            JSONOutput.error("Output path is outside home directory: \(outputDir)")
+            return
         }
 
         // Create output directory if needed
@@ -661,8 +659,13 @@ enum MailBridge {
     }
 
     private static func escapeForAppleScript(_ str: String) -> String {
-        return str.replacingOccurrences(of: "\\", with: "\\\\")
-                  .replacingOccurrences(of: "\"", with: "\\\"")
+        return str
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+            .replacingOccurrences(of: "\r\n", with: "\" & (ASCII character 13) & (ASCII character 10) & \"")
+            .replacingOccurrences(of: "\n", with: "\" & (ASCII character 10) & \"")
+            .replacingOccurrences(of: "\r", with: "\" & (ASCII character 13) & \"")
+            .replacingOccurrences(of: "\t", with: "\" & (ASCII character 9) & \"")
     }
 
     // MARK: - Parsers

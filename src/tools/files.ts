@@ -17,8 +17,11 @@ export function registerFileTools(server: McpServer): void {
         .describe("List recursively (default: false)"),
       depth: z
         .number()
+        .int()
+        .min(1)
+        .max(10)
         .optional()
-        .describe("Max recursion depth when recursive (default: 3)"),
+        .describe("Max recursion depth when recursive (default: 3, max: 10)"),
     },
     async ({ path, recursive, depth }) => {
       const args = ["file-list"];
