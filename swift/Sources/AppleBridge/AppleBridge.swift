@@ -90,6 +90,15 @@ struct AppleBridge: AsyncParsableCommand {
             KeynoteListThemes.self,
             KeynoteExport.self,
             KeynoteInfo.self,
+            // Notes
+            NotesListFolders.self,
+            NotesListNotes.self,
+            NotesSearchCmd.self,
+            NotesRead.self,
+            // Contacts
+            ContactsListGroups.self,
+            ContactsSearchCmd.self,
+            ContactsRead.self,
         ]
     )
 }
@@ -784,4 +793,54 @@ struct KeynoteInfo: ParsableCommand {
     static let configuration = CommandConfiguration(commandName: "keynote-info", abstract: "Get metadata about a Keynote presentation.")
     @Option(name: .long, help: "Path to .key file") var file: String
     func run() throws { KeynoteBridge.info(file: file) }
+}
+
+// MARK: - Notes Subcommands
+
+struct NotesListFolders: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "notes-folders", abstract: "List all Notes folders grouped by account.")
+    func run() throws { NotesBridge.listFolders() }
+}
+
+struct NotesListNotes: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "notes-list", abstract: "List notes, optionally filtered by folder and account.")
+    @Option(name: .long, help: "Folder name") var folder: String?
+    @Option(name: .long, help: "Account name (required when folder is ambiguous)") var account: String?
+    @Option(name: .long, help: "Max results (default: 50)") var limit: Int = 50
+    func run() throws { NotesBridge.listNotes(folder: folder, account: account, limit: limit) }
+}
+
+struct NotesSearchCmd: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "notes-search", abstract: "Search notes by title, body, or both.")
+    @Option(name: .long, help: "Search query") var query: String
+    @Option(name: .long, help: "Fields to search: title, body, all (default: all)") var searchIn: String = "all"
+    @Option(name: .long, help: "Max results (default: 20)") var limit: Int = 20
+    func run() throws { NotesBridge.search(query: query, limit: limit, searchIn: searchIn) }
+}
+
+struct NotesRead: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "notes-read", abstract: "Read a note's full content by ID.")
+    @Option(name: .long, help: "Note ID (from notes-list or notes-search)") var id: String
+    @Option(name: .long, help: "Max body characters (default: 8000, 0 = unlimited)") var maxBodyLength: Int = 8000
+    func run() throws { NotesBridge.readNote(id: id, maxBodyLength: maxBodyLength) }
+}
+
+// MARK: - Contacts Subcommands
+
+struct ContactsListGroups: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "contacts-groups", abstract: "List all contact groups with member counts.")
+    func run() async throws { await ContactsBridge.listGroups() }
+}
+
+struct ContactsSearchCmd: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "contacts-search", abstract: "Search contacts by name, email, or phone.")
+    @Option(name: .long, help: "Search query") var query: String
+    @Option(name: .long, help: "Max results (default: 20)") var limit: Int = 20
+    func run() async throws { await ContactsBridge.search(query: query, limit: limit) }
+}
+
+struct ContactsRead: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "contacts-read", abstract: "Read a contact's full details by ID.")
+    @Option(name: .long, help: "Contact ID (from contacts-search)") var id: String
+    func run() async throws { await ContactsBridge.readContact(id: id) }
 }

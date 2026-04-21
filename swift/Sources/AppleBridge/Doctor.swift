@@ -1,3 +1,4 @@
+import Contacts
 import EventKit
 import Foundation
 
@@ -82,6 +83,24 @@ enum DoctorBridge {
         report["pages"] = pagesCheck
         report["keynote"] = keynoteCheck
 
+        // Notes -- AppleScript-based, same shape as Mail
+        report["notes"] = checkNotesAccess()
+
+        // Contacts -- native CNContactStore
+        let contactsStatus = CNContactStore.authorizationStatus(for: .contacts)
+        report["contacts"] = [
+            "status": contactsAuthName(contactsStatus),
+            "granted": contactsStatus == .authorized
+        ]
+        if contactsStatus == .notDetermined {
+            let granted = await ContactsBridge.requestAccess()
+            report["contacts"] = [
+                "status": granted ? "authorized" : "denied",
+                "granted": granted,
+                "note": "Permission was just requested."
+            ]
+        }
+
         // Guidance
         var actions: [String] = []
         if calStatus != .fullAccess {
@@ -101,6 +120,13 @@ enum DoctorBridge {
         }
         if !(keynoteCheck["installed"] as? Bool ?? false) {
             actions.append("Keynote: Install from App Store for presentation tools")
+        }
+        let notesAccessible = (report["notes"] as? [String: Any])?["accessible"] as? Bool ?? false
+        if !notesAccessible {
+            actions.append("Notes: Run apple-bridge with a notes subcommand to trigger the Automation permission dialog")
+        }
+        if contactsStatus != .authorized {
+            actions.append("Contacts: Grant access in System Settings > Privacy & Security > Contacts")
         }
         if !actions.isEmpty {
             report["requiredActions"] = actions
@@ -144,6 +170,49 @@ enum DoctorBridge {
             }
         } catch {
             return ["installed": false, "accessible": false, "note": "Could not check \(appName): \(error.localizedDescription)"]
+        }
+    }
+
+    private static func contactsAuthName(_ status: CNAuthorizationStatus) -> String {
+        switch status {
+        case .notDetermined: return "notDetermined"
+        case .restricted: return "restricted"
+        case .denied: return "denied"
+        case .authorized: return "authorized"
+        case .limited: return "limited"
+        @unknown default: return "unknown"
+        }
+    }
+
+    private static func checkNotesAccess() -> [String: Any] {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        task.arguments = ["-e", "tell application \"Notes\" to count of accounts"]
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        task.standardError = Pipe()
+
+        do {
+            try task.run()
+            task.waitUntilExit()
+            if task.terminationStatus == 0 {
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                let output = String(data: data, encoding: .utf8)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                return [
+                    "accessible": true,
+                    "accountCount": Int(output ?? "0") ?? 0
+                ]
+            }
+            return [
+                "accessible": false,
+                "note": "Notes automation permission not yet granted or Notes.app not running."
+            ]
+        } catch {
+            return [
+                "accessible": false,
+                "note": "Could not run osascript: \(error.localizedDescription)"
+            ]
         }
     }
 

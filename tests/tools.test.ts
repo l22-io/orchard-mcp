@@ -9,6 +9,8 @@ import { registerFileTools } from "../src/tools/files.js";
 import { registerNumbersTools } from "../src/tools/numbers.js";
 import { registerPagesTools } from "../src/tools/pages.js";
 import { registerKeynoteTools } from "../src/tools/keynote.js";
+import { registerNotesTools } from "../src/tools/notes.js";
+import { registerContactsTools } from "../src/tools/contacts.js";
 
 const EXPECTED_TOOLS = [
   // Calendar (4)
@@ -77,6 +79,15 @@ const EXPECTED_TOOLS = [
   "keynote.list_themes",
   "keynote.export",
   "keynote.info",
+  // Notes (4)
+  "notes.list_folders",
+  "notes.list_notes",
+  "notes.search",
+  "notes.read_note",
+  // Contacts (3)
+  "contacts.list_groups",
+  "contacts.search",
+  "contacts.read_contact",
 ];
 
 describe("tool registration", () => {
@@ -92,12 +103,14 @@ describe("tool registration", () => {
     registerNumbersTools(server);
     registerPagesTools(server);
     registerKeynoteTools(server);
+    registerNotesTools(server);
+    registerContactsTools(server);
   });
 
-  it("registers exactly 58 tools", () => {
+  it("registers exactly 65 tools", () => {
     const tools = (server as any)._registeredTools as Record<string, unknown>;
     const names = Object.keys(tools);
-    assert.equal(names.length, 58, `Expected 58 tools, got ${names.length}: ${names.join(", ")}`);
+    assert.equal(names.length, 65, `Expected 65 tools, got ${names.length}: ${names.join(", ")}`);
   });
 
   for (const name of EXPECTED_TOOLS) {
