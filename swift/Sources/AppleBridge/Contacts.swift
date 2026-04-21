@@ -102,7 +102,11 @@ enum ContactsBridge {
 
     // MARK: - Search
 
-    // Runs name / email / phone predicates and deduplicates by identifier.
+    // Runs name / email / phone predicates, then falls back to a digits-only
+    // substring scan over every contact's phone numbers when the query looks
+    // phone-ish (CNContact.predicateForContacts(matching: CNPhoneNumber) only
+    // matches normalized full numbers — partials like "+4917" would otherwise
+    // return empty). Deduplicated by identifier.
     private static func findMatches(query: String) -> [CNContact] {
         var seen = Set<String>()
         var results: [CNContact] = []
@@ -117,6 +121,12 @@ enum ContactsBridge {
                 continue
             }
         }
+        if looksLikePhone(query) {
+            for c in phoneSubstringMatches(query: query) where !seen.contains(c.identifier) {
+                seen.insert(c.identifier)
+                results.append(c)
+            }
+        }
         return results
     }
 
@@ -125,10 +135,42 @@ enum ContactsBridge {
         if query.contains("@") {
             list.append(CNContact.predicateForContacts(matchingEmailAddress: query))
         }
-        if query.first.map({ "+0123456789".contains($0) }) == true {
+        if looksLikePhone(query) {
             list.append(CNContact.predicateForContacts(matching: CNPhoneNumber(stringValue: query)))
         }
         return list
+    }
+
+    private static func looksLikePhone(_ query: String) -> Bool {
+        query.first.map { "+0123456789".contains($0) } ?? false
+    }
+
+    private static func phoneSubstringMatches(query: String) -> [CNContact] {
+        // Normalize to digits only, then also strip any leading zeros so that
+        // national-format queries (e.g. trunk-prefixed local numbers) match
+        // international-format stored phone numbers that omit the trunk digit.
+        let digits = query.filter(\.isNumber)
+        let trimmed = String(digits.drop(while: { $0 == "0" }))
+        let candidates = Set([digits, trimmed].filter { $0.count >= 3 })
+        guard !candidates.isEmpty else { return [] }
+
+        let request = CNContactFetchRequest(keysToFetch: defaultKeys)
+        request.unifyResults = true
+        var results: [CNContact] = []
+        do {
+            try store.enumerateContacts(with: request) { contact, _ in
+                for phone in contact.phoneNumbers {
+                    let phoneDigits = phone.value.stringValue.filter(\.isNumber)
+                    if candidates.contains(where: { phoneDigits.contains($0) }) {
+                        results.append(contact)
+                        return
+                    }
+                }
+            }
+        } catch {
+            return results
+        }
+        return results
     }
 
     // MARK: - Shaping

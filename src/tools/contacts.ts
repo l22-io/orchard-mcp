@@ -17,7 +17,7 @@ export function registerContactsTools(server: McpServer): void {
 
   server.tool(
     "contacts.search",
-    "Search contacts by name, email, or phone number. Phone queries should start with + or a digit; email queries should contain @. Returns summaries; use contacts.read_contact for full details.",
+    "Search contacts by name, email, or phone number. Phone queries (starting with + or a digit) match full numbers via the Contacts framework predicate and partial numbers via a digits-only substring scan — spaces, dashes, and parentheses are ignored in the comparison. Email queries should contain @. Returns summaries; use contacts.read_contact for full details.",
     {
       query: z.string().describe("Name, email, or phone query"),
       limit: z
