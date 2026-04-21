@@ -33,7 +33,10 @@
     "build",
     "scripts/postinstall.sh",
     "swift/.build/AppleBridge.app",
-    "swift/Sources/AppleBridge/Info.plist"
+    "swift/.build/AppleBridge.app.sha256",
+    "swift/Package.swift",
+    "swift/Package.resolved",
+    "swift/Sources"
   ],
   "os": [
     "darwin"

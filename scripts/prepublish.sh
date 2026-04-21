@@ -29,7 +29,14 @@ cp "$BRIDGE_BIN" "$APP_BUNDLE/Contents/MacOS/apple-bridge"
 cp "$INFO_PLIST" "$APP_BUNDLE/Contents/"
 codesign --force --sign - "$APP_BUNDLE"
 
+echo "[prepublish] Writing checksum manifest..."
+SHASUM_FILE="$APP_BUNDLE.sha256"
+(cd "$APP_BUNDLE/Contents/MacOS" && shasum -a 256 apple-bridge) > "$SHASUM_FILE"
+cat "$SHASUM_FILE"
+
 echo "[prepublish] Verifying universal binary..."
 file "$BRIDGE_BIN"
 
 echo "[prepublish] Done."
+echo "[prepublish] Publish this checksum alongside the GitHub release so users"
+echo "             can cross-reference \$SHASUM_FILE against a trusted channel."

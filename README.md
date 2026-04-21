@@ -46,7 +46,10 @@ npm install -g @l22-io/orchard-mcp
 orchard-mcp setup
 ```
 
-No Swift or Xcode required -- the npm package ships a prebuilt universal binary (arm64 + x86_64).
+If Xcode Command Line Tools are installed (`xcode-select --install`), `postinstall` builds
+`apple-bridge` from source — the strongest install-time guarantee. Otherwise the package
+falls back to the shipped prebuilt universal binary (arm64 + x86_64) and verifies its
+SHA-256 against the manifest published inside the tarball.
 
 The setup wizard verifies prerequisites, triggers macOS permission prompts, and generates
 MCP client configuration.
