@@ -54,15 +54,15 @@
   "author": "l22.io GmbH",
   "license": "MIT",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.0.0"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^3.25.0"
   },
   "devDependencies": {
-    "@types/node": "^22.19.0",
+    "@types/node": "^25.0.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.7.0"
+    "typescript": "^6.0.0"
   }
 }
