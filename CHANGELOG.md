@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.6.0] - 2026-05-12
+
+### Changed
+- TypeScript bumped to `^6.0.0` (from `^5.7.0`)
+- `@types/node` bumped to `^25.0.0` (from `^22.0.0`)
+- `zod` bumped to `^4.4.0` (from `^3.25.0`); existing schema surface (`z.string/number/object` + `.optional/.min/.max/.int/.describe`) is unchanged between v3 and v4 — no migration needed
+- `swift-argument-parser` floor bumped to `1.7.1` (from `1.3.0`)
+- `engines.node` minimum bumped to `>=22.0.0` (from `>=18.0.0`); Node 18 EOL was 2025-04-30, aligning with current LTS
+- CI now tests on a Node `[22, 24]` matrix (was Node 18) to match the supported floor
+
+### Fixed
+- `tsconfig.json`: added `"types": ["node"]`. TS 6 no longer auto-discovers `@types/*` under Node16 module resolution; without this every `node:*` import failed to type-check
+
+## [0.5.1] - 2026-05-12
+
+### Security
+- Bumped `@modelcontextprotocol/sdk` `^1.24.0` → `^1.29.0` and ran `npm audit fix`, clearing 7 transitive vulnerabilities (high/moderate) in the SDK's HTTP transport dependencies: Hono (auth bypass + path traversal), express, express-rate-limit (rate-limit bypass via IPv6), ajv, fast-uri (path traversal + host confusion), ip-address (XSS), path-to-regexp (ReDoS). Stdio transport never reached this code in practice, but bumping the floor lets npm pick up patched versions.
+
+### Changed
+- `@types/node` bumped to `^22.19.0` (within 22.x line, before the 0.6.0 jump to 25.x)
+- `tsx` bumped to `^4.21.0`
+
 ## [0.3.3] - 2026-03-23
 
 ### Added
