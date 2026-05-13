@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.1] - 2026-05-13
+
+### Fixed
+- **Mail.app lockup from unbounded body searches.** `mail.search` with `searchIn` `body`/`all` + `mailbox: "all"` + no specific account issued an AppleScript that iterated `every message of every mailbox of every account` with `content contains`, forcing Mail to load message bodies en masse. Mail.app could be locked on Apple Event processing for many minutes, during which Force Quit / dock-quit did nothing (the quit Apple Event was queued behind the in-flight search). The TS bridge then orphaned the osascript subprocess when its timeout fired, leaving Mail wedged indefinitely.
+  - `Mail.swift`: `MailBridge.search` now refuses the pathological combination before invoking Mail; clients get a clear error pointing at the narrowing options (`--account`, `--mailbox`, or `--search-in subject|sender`).
+  - `Mail.swift`: `runAppleScript` now has a 90-second watchdog (`task.terminate()` followed by `SIGKILL` after a 2-second grace) so a hung script auto-frees Mail.app instead of holding it hostage forever.
+  - `bridge.ts`: switched from `execFile` to `spawn` with `detached: true`; on timeout the entire process group is killed via `process.kill(-pid, "SIGTERM")` so `osascript` grandchildren are terminated alongside `apple-bridge` instead of being orphaned to `launchd`.
+  - `bridge.ts`: added `BridgeOptions.timeoutMs` for per-call overrides; mail scan commands (`mail.search`, `mail.unread_summary`, `mail.flagged`) pass 120 s so the in-Swift 90 s watchdog surfaces a clean error before the TS-side kill cuts execution short.
+
+### Changed
+- **`npm run build:swift` now refreshes the `AppleBridge.app` bundle.** The TS bridge invokes the binary inside `swift/.build/AppleBridge.app/Contents/MacOS/apple-bridge`, but the previous `build:swift` only produced `.build/release/apple-bridge` — dev iterations silently ran against the stale `.app` copy. The script now also copies the freshly-built binary into the bundle, refreshes `Info.plist`, and re-`codesign`s, matching the logic in `scripts/postinstall.sh`'s `build_from_source`.
+
 ## [0.6.0] - 2026-05-12
 
 ### Changed

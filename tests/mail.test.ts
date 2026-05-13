@@ -140,6 +140,52 @@ describe("cross-mailbox search args construction", () => {
   });
 });
 
+describe("search scope guard (mirrors Swift MailBridge.search)", () => {
+  // Reason: This predicate is enforced authoritatively in Mail.swift; the
+  // test pins down the exact rule so behavior changes are caught even though
+  // the guard runs in Swift. The constructor on the JS side currently does
+  // not pre-validate (we rely on the Swift error response), so this test
+  // documents what the bridge will reject.
+  function isRefused(args: {
+    searchIn?: "subject" | "sender" | "body" | "all";
+    account?: string;
+    mailbox?: string;
+  }): boolean {
+    const searchesContent = !args.searchIn || args.searchIn === "all" || args.searchIn === "body";
+    const allAccounts = !args.account || args.account === "all";
+    const allMailboxes = args.mailbox === "all";
+    return searchesContent && allAccounts && allMailboxes;
+  }
+
+  it("refuses default searchIn + mailbox 'all' + no account", () => {
+    assert.equal(isRefused({ mailbox: "all" }), true);
+  });
+
+  it("refuses searchIn 'all' + mailbox 'all' + account 'all'", () => {
+    assert.equal(isRefused({ searchIn: "all", account: "all", mailbox: "all" }), true);
+  });
+
+  it("refuses searchIn 'body' + mailbox 'all'", () => {
+    assert.equal(isRefused({ searchIn: "body", mailbox: "all" }), true);
+  });
+
+  it("allows searchIn 'subject' across mailbox 'all'", () => {
+    assert.equal(isRefused({ searchIn: "subject", mailbox: "all" }), false);
+  });
+
+  it("allows searchIn 'sender' across mailbox 'all'", () => {
+    assert.equal(isRefused({ searchIn: "sender", mailbox: "all" }), false);
+  });
+
+  it("allows searchIn 'body' when scoped to a specific account", () => {
+    assert.equal(isRefused({ searchIn: "body", account: "Proton", mailbox: "all" }), false);
+  });
+
+  it("allows searchIn 'all' when no mailbox='all' (defaults to inbox)", () => {
+    assert.equal(isRefused({ searchIn: "all" }), false);
+  });
+});
+
 describe("pagination envelope", () => {
   it("wraps results with metadata when offset is provided", () => {
     const messages = [{ id: "1", subject: "test" }];

@@ -1,12 +1,9 @@
-import { execFile, spawn } from "node:child_process";
-import { promisify } from "node:util";
+import { spawn } from "node:child_process";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readFile, unlink, access } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
-
-const execFileAsync = promisify(execFile);
 
 // Reason: Resolve the Swift binary path relative to this file's location.
 // In development: swift/.build/release/apple-bridge
@@ -57,43 +54,175 @@ export interface BridgeResponse {
   error?: string;
 }
 
+export interface BridgeOptions {
+  /**
+   * Per-call timeout in milliseconds. Defaults to 30_000.
+   * Long-running operations (e.g. mail content searches, large file reads)
+   * should pass a larger value. When the timeout fires the entire child
+   * process group is killed via SIGTERM (then SIGKILL) — this is required
+   * for tools that spawn osascript grandchildren, which would otherwise
+   * be orphaned and keep Mail.app / Notes.app wedged on Apple Events.
+   */
+  timeoutMs?: number;
+}
+
+const DEFAULT_TIMEOUT_MS = 30_000;
+const SIGKILL_GRACE_MS = 2_000;
+
 /**
  * Execute an apple-bridge subcommand and return parsed JSON.
  * Tries direct execution first; falls back to .app bundle mode
  * (via `open`) when direct execution returns a permission error.
  */
 export async function callBridge(
-  args: string[]
+  args: string[],
+  opts: BridgeOptions = {}
 ): Promise<BridgeResponse> {
   const bin = getBridgePath();
-  try {
-    const { stdout, stderr } = await execFileAsync(bin, args, {
-      timeout: 30_000,
-      maxBuffer: 10 * 1024 * 1024,
-    });
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const direct = await runBridgeProcess(bin, args, timeoutMs);
 
-    if (stderr) {
-      // Reason: stderr is used for Swift warnings/diagnostics, log but don't fail.
-      console.error(`[apple-bridge stderr] ${stderr.trim()}`);
+  if (direct.status === "error" || direct.parsed == null) {
+    if (direct.spawnError) {
+      return { status: "error", error: direct.spawnError };
     }
+    if (direct.timedOut) {
+      return {
+        status: "error",
+        error: `apple-bridge timed out after ${timeoutMs}ms`,
+      };
+    }
+  }
 
-    const parsed = JSON.parse(stdout) as BridgeResponse;
-
+  if (direct.parsed) {
+    const parsed = direct.parsed;
     // If the command returned a permission error, retry via .app bundle
     if (
       parsed.status === "error" &&
       typeof parsed.error === "string" &&
       parsed.error.includes("access denied")
     ) {
-      return callBridgeViaApp(args);
+      return callBridgeViaApp(args, timeoutMs);
+    }
+    return parsed;
+  }
+
+  return { status: "error", error: direct.spawnError ?? "apple-bridge returned no output" };
+}
+
+interface DirectResult {
+  status: "ok" | "error";
+  parsed?: BridgeResponse;
+  timedOut?: boolean;
+  spawnError?: string;
+}
+
+/**
+ * Spawn apple-bridge in its own process group so we can SIGTERM the entire
+ * group on timeout. Required because Swift's Foundation.Process does not
+ * cascade signals to its child osascript processes — without this, a
+ * cancelled/timed-out mail search leaves osascript orphaned and Mail.app
+ * locked on Apple Events for as long as the script keeps iterating.
+ */
+function runBridgeProcess(
+  bin: string,
+  args: string[],
+  timeoutMs: number
+): Promise<DirectResult> {
+  return new Promise((resolvePromise) => {
+    let child;
+    try {
+      child = spawn(bin, args, {
+        detached: true, // own process group; -pid kills the whole tree
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to spawn apple-bridge";
+      resolvePromise({ status: "error", spawnError: msg });
+      return;
     }
 
-    return parsed;
-  } catch (err: unknown) {
-    const msg =
-      err instanceof Error ? err.message : "Unknown error calling apple-bridge";
-    return { status: "error", error: msg };
-  }
+    const pid = child.pid;
+    if (!pid) {
+      resolvePromise({ status: "error", spawnError: "apple-bridge spawn returned no pid" });
+      return;
+    }
+
+    const chunks: Buffer[] = [];
+    const errChunks: Buffer[] = [];
+    let totalBytes = 0;
+    const MAX_BYTES = 10 * 1024 * 1024;
+    let settled = false;
+    let timedOut = false;
+
+    const settle = (result: DirectResult) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      clearTimeout(sigkillTimer);
+      resolvePromise(result);
+    };
+
+    const killGroup = (signal: NodeJS.Signals) => {
+      try {
+        process.kill(-pid, signal);
+      } catch {
+        // Group may already be gone; nothing to do.
+      }
+    };
+
+    let sigkillTimer: NodeJS.Timeout = setTimeout(() => {}, 0);
+    clearTimeout(sigkillTimer);
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      killGroup("SIGTERM");
+      sigkillTimer = setTimeout(() => killGroup("SIGKILL"), SIGKILL_GRACE_MS);
+    }, timeoutMs);
+
+    child.stdout?.on("data", (d: Buffer) => {
+      totalBytes += d.length;
+      if (totalBytes > MAX_BYTES) {
+        killGroup("SIGTERM");
+        settle({
+          status: "error",
+          spawnError: `apple-bridge output exceeded ${MAX_BYTES} bytes`,
+        });
+        return;
+      }
+      chunks.push(d);
+    });
+
+    child.stderr?.on("data", (d: Buffer) => {
+      errChunks.push(d);
+    });
+
+    child.on("error", (err) => {
+      settle({ status: "error", spawnError: err.message });
+    });
+
+    child.on("close", () => {
+      const stderr = Buffer.concat(errChunks).toString("utf8").trim();
+      if (stderr) {
+        console.error(`[apple-bridge stderr] ${stderr}`);
+      }
+      if (timedOut) {
+        settle({ status: "error", timedOut: true });
+        return;
+      }
+      const stdout = Buffer.concat(chunks).toString("utf8");
+      try {
+        const parsed = JSON.parse(stdout) as BridgeResponse;
+        settle({ status: "ok", parsed });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "JSON parse failed";
+        settle({
+          status: "error",
+          spawnError: `apple-bridge returned invalid JSON: ${msg}`,
+        });
+      }
+    });
+  });
 }
 
 /**
@@ -102,7 +231,8 @@ export async function callBridge(
  * TCC permissions (e.g. Reminders) without an .app bundle context.
  */
 async function callBridgeViaApp(
-  args: string[]
+  args: string[],
+  timeoutMs: number
 ): Promise<BridgeResponse> {
   const appPath = getAppBundlePath();
   const outputFile = resolve(tmpdir(), `apple-bridge-${randomUUID()}.json`);
@@ -127,9 +257,9 @@ async function callBridgeViaApp(
       child.kill();
       resolvePromise({
         status: "error",
-        error: "apple-bridge .app bundle timed out after 30s",
+        error: `apple-bridge .app bundle timed out after ${timeoutMs}ms`,
       });
-    }, 30_000);
+    }, timeoutMs);
 
     child.on("close", async () => {
       clearTimeout(timeout);
@@ -161,8 +291,11 @@ async function callBridgeViaApp(
 /**
  * Convenience: call bridge, check status, return data or throw.
  */
-export async function bridgeData(args: string[]): Promise<unknown> {
-  const result = await callBridge(args);
+export async function bridgeData(
+  args: string[],
+  opts?: BridgeOptions
+): Promise<unknown> {
+  const result = await callBridge(args, opts);
   if (result.status === "error") {
     throw new Error(result.error ?? "apple-bridge returned an error");
   }

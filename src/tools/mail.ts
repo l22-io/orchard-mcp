@@ -2,6 +2,13 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { bridgeData } from "../bridge.js";
 
+// Reason: Mail tools that iterate mailboxes via AppleScript can legitimately
+// run for a minute or more on large accounts. The Swift bridge has a 90s
+// osascript watchdog (Mail.swift `defaultAppleScriptTimeout`); the TS timeout
+// must outlive that so the Swift watchdog reports a clean error instead of
+// being cut off mid-execution by the TS-side process-group kill.
+const MAIL_SCAN_TIMEOUT_MS = 120_000;
+
 export function registerMailTools(server: McpServer): void {
   server.tool(
     "mail.list_accounts",
@@ -34,7 +41,7 @@ export function registerMailTools(server: McpServer): void {
       if (limit) {
         args.push("--limit", String(limit));
       }
-      const data = await bridgeData(args);
+      const data = await bridgeData(args, { timeoutMs: MAIL_SCAN_TIMEOUT_MS });
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -43,7 +50,10 @@ export function registerMailTools(server: McpServer): void {
 
   server.tool(
     "mail.search",
-    "Search email messages by subject, sender, body, or all fields (default: all). Returns headers only (no body). Body search across all mailboxes may be slow on large accounts.",
+    "Search email messages by subject, sender, body, or all fields (default: all). Returns headers only (no body). " +
+      "SCOPE RULE: body or all-fields search across mailbox='all' AND no specific account is REFUSED — it can lock " +
+      "Mail.app for minutes. Narrow the scope: pick a specific account, a specific mailbox, or set searchIn to " +
+      "'subject' or 'sender' before using mailbox='all'.",
     {
       query: z
         .string()
@@ -55,11 +65,11 @@ export function registerMailTools(server: McpServer): void {
       mailbox: z
         .string()
         .optional()
-        .describe("Mailbox to search in (default: inbox). Use 'all' to search all mailboxes."),
+        .describe("Mailbox to search in (default: inbox). Use 'all' to search all mailboxes (requires a specific account when searchIn includes body)."),
       searchIn: z
         .enum(["subject", "sender", "body", "all"])
         .optional()
-        .describe("Fields to search: subject, sender, body, or all (default: all)"),
+        .describe("Fields to search: subject, sender, body, or all (default: all). Use 'subject' or 'sender' when searching across mailbox='all' without an account filter."),
       limit: z
         .number()
         .int()
@@ -93,7 +103,7 @@ export function registerMailTools(server: McpServer): void {
       if (offset !== undefined) {
         args.push("--offset", String(offset));
       }
-      const data = await bridgeData(args);
+      const data = await bridgeData(args, { timeoutMs: MAIL_SCAN_TIMEOUT_MS });
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -205,7 +215,7 @@ export function registerMailTools(server: McpServer): void {
       if (offset !== undefined) {
         args.push("--offset", String(offset));
       }
-      const data = await bridgeData(args);
+      const data = await bridgeData(args, { timeoutMs: MAIL_SCAN_TIMEOUT_MS });
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };

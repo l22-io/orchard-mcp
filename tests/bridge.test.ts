@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import type { BridgeResponse } from "../src/bridge.js";
+import type { BridgeOptions, BridgeResponse } from "../src/bridge.js";
 
 describe("bridge JSON contract", () => {
   it("parses ok response", () => {
@@ -28,5 +28,17 @@ describe("bridge JSON contract", () => {
     const parsed: BridgeResponse = JSON.parse(raw);
     assert.equal(parsed.status, "ok");
     assert.equal(parsed.data, null);
+  });
+});
+
+describe("BridgeOptions shape", () => {
+  it("accepts timeoutMs override", () => {
+    const opts: BridgeOptions = { timeoutMs: 120_000 };
+    assert.equal(opts.timeoutMs, 120_000);
+  });
+
+  it("allows empty options (uses default timeout)", () => {
+    const opts: BridgeOptions = {};
+    assert.equal(opts.timeoutMs, undefined);
   });
 });
