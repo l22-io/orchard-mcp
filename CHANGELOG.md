@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.2] - 2026-05-19
+
+### Fixed
+- **Mail.app re-lockup via two gaps in the v0.6.1 watchdog story.** v0.6.1 stopped the unbounded body-search lockup, but two adjacent code paths still produced orphaned `osascript` processes that wedged Mail.app's Apple Event queue:
+  - `bridge.ts`: when the timeout fired, `SIGTERM` was sent to the process group and `SIGKILL` scheduled 2 s later — but the Swift bridge has no `SIGTERM` handler and dies on the first signal, so `child.on("close")` fired immediately and `settle()` cancelled the `SIGKILL` timer before it ran. Any `osascript` grandchild blocked in a Mach RPC to Mail.app/Notes.app then stayed alive with `PPID=1`, holding Mail's event queue indefinitely. The escalation is now sticky: once committed it cannot be cancelled by the parent's close, and the `SIGKILL` timer is `.unref()`d so it never blocks Node shutdown.
+  - `Doctor.swift`: `checkMailAccess()` and `checkNotesAccess()` ran `osascript -e 'tell application "Mail" to count of accounts'` (and the Notes equivalent) with `task.waitUntilExit()` and no timeout. When Mail.app was busy, this blocked until Node's 30 s timer fired and then triggered the bug above — `system_doctor` was the actual orphan source observed in the field. Both checks now use a shared `runOsascriptBounded` helper with a 5 s `SIGTERM`/`SIGKILL` watchdog and report `accessible: false` with a clear note instead of waiting.
+- Regression test in `tests/bridge.test.ts` reproduces the orphan: a stub bridge forks a stdio-detached perl grandchild that maps `SIGTERM` to `SIG_IGN`. Without the fix the grandchild survives the bridge timeout; with the fix it is `SIGKILL`ed after the grace period.
+
 ## [0.6.1] - 2026-05-13
 
 ### Fixed

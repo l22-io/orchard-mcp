@@ -154,14 +154,8 @@ function runBridgeProcess(
     const MAX_BYTES = 10 * 1024 * 1024;
     let settled = false;
     let timedOut = false;
-
-    const settle = (result: DirectResult) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      clearTimeout(sigkillTimer);
-      resolvePromise(result);
-    };
+    let killEscalated = false;
+    let sigkillTimer: NodeJS.Timeout | null = null;
 
     const killGroup = (signal: NodeJS.Signals) => {
       try {
@@ -171,19 +165,40 @@ function runBridgeProcess(
       }
     };
 
-    let sigkillTimer: NodeJS.Timeout = setTimeout(() => {}, 0);
-    clearTimeout(sigkillTimer);
+    // Reason: Swift's apple-bridge has no SIGTERM handler and dies on the first
+    // signal, which causes Node's "close" event to fire almost immediately.
+    // If we cleared sigkillTimer at that point, any osascript grandchild
+    // wedged in an Apple Event RPC to Mail.app / Notes.app would be orphaned
+    // (PPID=1) and continue to hold Mail.app's event queue hostage. So once
+    // we have committed to escalating, the SIGKILL must fire regardless of
+    // when the bridge process itself closes.
+    const escalateKill = () => {
+      if (killEscalated) return;
+      killEscalated = true;
+      killGroup("SIGTERM");
+      sigkillTimer = setTimeout(() => killGroup("SIGKILL"), SIGKILL_GRACE_MS);
+      sigkillTimer.unref();
+    };
+
+    const settle = (result: DirectResult) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (!killEscalated && sigkillTimer) clearTimeout(sigkillTimer);
+      // When escalation is in flight, leave the SIGKILL timer alone so it
+      // can reap any grandchildren the bridge spawned (see escalateKill).
+      resolvePromise(result);
+    };
 
     const timer = setTimeout(() => {
       timedOut = true;
-      killGroup("SIGTERM");
-      sigkillTimer = setTimeout(() => killGroup("SIGKILL"), SIGKILL_GRACE_MS);
+      escalateKill();
     }, timeoutMs);
 
     child.stdout?.on("data", (d: Buffer) => {
       totalBytes += d.length;
       if (totalBytes > MAX_BYTES) {
-        killGroup("SIGTERM");
+        escalateKill();
         settle({
           status: "error",
           spawnError: `apple-bridge output exceeded ${MAX_BYTES} bytes`,

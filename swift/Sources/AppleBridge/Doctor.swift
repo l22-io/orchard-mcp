@@ -185,68 +185,104 @@ enum DoctorBridge {
     }
 
     private static func checkNotesAccess() -> [String: Any] {
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        task.arguments = ["-e", "tell application \"Notes\" to count of accounts"]
-        let pipe = Pipe()
-        task.standardOutput = pipe
-        task.standardError = Pipe()
-
-        do {
-            try task.run()
-            task.waitUntilExit()
-            if task.terminationStatus == 0 {
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                let output = String(data: data, encoding: .utf8)?
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
-                return [
-                    "accessible": true,
-                    "accountCount": Int(output ?? "0") ?? 0
-                ]
-            }
+        guard let result = runOsascriptBounded(["-e", "tell application \"Notes\" to count of accounts"]) else {
             return [
                 "accessible": false,
-                "note": "Notes automation permission not yet granted or Notes.app not running."
-            ]
-        } catch {
-            return [
-                "accessible": false,
-                "note": "Could not run osascript: \(error.localizedDescription)"
+                "note": "Notes.app did not respond within \(Int(doctorAppleScriptTimeout))s. It may be busy or unresponsive; system_doctor refuses to wait longer to avoid orphaning osascript."
             ]
         }
+        if result.status == 0 {
+            return [
+                "accessible": true,
+                "accountCount": Int(result.output) ?? 0
+            ]
+        }
+        return [
+            "accessible": false,
+            "note": "Notes automation permission not yet granted or Notes.app not running."
+        ]
     }
 
     private static func checkMailAccess() -> [String: Any] {
         // Reason: Try a minimal AppleScript to see if Mail.app is accessible.
         // This doesn't send the permission prompt -- it just checks if we can talk to Mail.
+        guard let result = runOsascriptBounded(["-e", "tell application \"Mail\" to count of accounts"]) else {
+            return [
+                "accessible": false,
+                "note": "Mail.app did not respond within \(Int(doctorAppleScriptTimeout))s. It may be busy or unresponsive; system_doctor refuses to wait longer to avoid orphaning osascript and wedging Mail.app's Apple Event queue."
+            ]
+        }
+        if result.status == 0 {
+            return [
+                "accessible": true,
+                "accountCount": Int(result.output) ?? 0
+            ]
+        }
+        return [
+            "accessible": false,
+            "note": "Mail automation permission not yet granted or Mail.app not running."
+        ]
+    }
+
+    // MARK: - Bounded osascript helper
+
+    /// Hard timeout for any AppleScript invocation issued by the doctor. The
+    /// doctor's job is to report state quickly; if Mail.app or Notes.app
+    /// cannot answer "count of accounts" in this window they are by definition
+    /// not accessible, and continuing to wait risks the outer Node bridge
+    /// timer firing first and orphaning osascript (which then keeps Mail.app
+    /// locked on Apple Events for as long as it stays alive).
+    private static let doctorAppleScriptTimeout: TimeInterval = 5
+
+    /// Run `osascript` with the given arguments under a hard timeout. Returns
+    /// nil on timeout (or spawn failure); otherwise returns the exit status
+    /// and trimmed stdout. The watchdog SIGTERMs first, then SIGKILLs after
+    /// a short grace so Apple-Event-wedged osascript processes are reaped.
+    private static func runOsascriptBounded(
+        _ args: [String],
+        timeoutSeconds: TimeInterval = doctorAppleScriptTimeout
+    ) -> (status: Int32, output: String)? {
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        task.arguments = ["-e", "tell application \"Mail\" to count of accounts"]
-        let pipe = Pipe()
-        task.standardOutput = pipe
+        task.arguments = args
+        let outPipe = Pipe()
+        task.standardOutput = outPipe
         task.standardError = Pipe()
 
         do {
             try task.run()
-            task.waitUntilExit()
-            if task.terminationStatus == 0 {
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
-                return [
-                    "accessible": true,
-                    "accountCount": Int(output ?? "0") ?? 0
-                ]
-            } else {
-                return [
-                    "accessible": false,
-                    "note": "Mail automation permission not yet granted or Mail.app not running."
-                ]
-            }
         } catch {
-            return [
-                "accessible": false,
-                "note": "Could not run osascript: \(error.localizedDescription)"
-            ]
+            return nil
         }
+
+        let pid = task.processIdentifier
+        let didTimeOut = TimeoutFlag()
+        let watchdog = DispatchWorkItem {
+            guard task.isRunning else { return }
+            didTimeOut.set()
+            task.terminate()
+            DispatchQueue.global().asyncAfter(deadline: .now() + 1) {
+                if task.isRunning { kill(pid, SIGKILL) }
+            }
+        }
+        DispatchQueue.global().asyncAfter(deadline: .now() + timeoutSeconds, execute: watchdog)
+        task.waitUntilExit()
+        watchdog.cancel()
+
+        if didTimeOut.value { return nil }
+
+        let data = outPipe.fileHandleForReading.readDataToEndOfFile()
+        let output = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return (task.terminationStatus, output)
+    }
+
+    /// Thread-safe flag for the bounded osascript watchdog. Mirrors the
+    /// MailBridge.TimeoutFlag used by Mail.swift's runAppleScript.
+    private final class TimeoutFlag {
+        private let lock = NSLock()
+        private var fired = false
+        func set() { lock.lock(); fired = true; lock.unlock() }
+        var value: Bool { lock.lock(); defer { lock.unlock() }; return fired }
     }
 }
