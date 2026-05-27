@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.3] - 2026-05-27
+
+### Fixed
+- **Orphaned `osascript` from `mail-message` per-account fallback (and any other Swift-driven `osascript` call) when `apple-bridge` was killed before its own watchdog could fire.** v0.6.1 routes the timeout-side kill through `process.kill(-pgid, ...)` on the assumption that the `osascript` grandchild lives in `apple-bridge`'s process group. On macOS, `Foundation.Process` actually spawns into a **new** process group, so the group-kill only ever reaches `apple-bridge`; the `osascript` grandchild then survives as `PPID=1` and keeps Mail.app's Apple Event queue wedged for as long as it loops over `every mailbox of every account`. Two such orphans were observed in the wild after ~16 minutes of runtime (single Outlook message id, per-account scan path in `MailBridge.readMessage`).
+  - New `OsascriptRunner` module installs `SIGTERM`/`SIGINT`/`SIGHUP` handlers in `AppleBridge.main()` that `SIGKILL` the currently-running `osascript` child before re-raising the signal. The handler is async-signal-safe (single `sig_atomic_t` PID slot, only `kill`/`signal`/`raise` calls). This guarantees osascript dies even if `apple-bridge` is killed by node, by the user, or by the OS before the in-process watchdog runs.
+  - `Mail.swift`, `Notes.swift`, `Numbers.swift`, `Pages.swift`, `Keynote.swift`, `Doctor.swift`: replaced six near-duplicate `runAppleScript`/`runJXA`/`runOsascriptBounded` helpers (and three `TimeoutFlag` classes) with a single shared `OsascriptRunner.run` / `runOsascript.runRaw`. Every module now gets the registered-PID-on-spawn + signal-trap behaviour, plus a uniform 120s watchdog by default (Mail keeps its 90s, Doctor keeps its 5s).
+
 ## [0.6.2] - 2026-05-19
 
 ### Fixed

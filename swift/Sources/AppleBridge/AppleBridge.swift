@@ -7,6 +7,11 @@ struct AppleBridge: AsyncParsableCommand {
     // This allows any subcommand to write to a file instead of stdout,
     // needed for .app bundle mode on macOS Sequoia where stdout is not capturable.
     static func main() async {
+        // Install before parsing so a SIGTERM during arg parsing (rare, but
+        // possible if node tears us down before we finish startup) still
+        // reaps any osascript spawned by a partial subcommand.
+        OsascriptRunner.installSignalHandlers()
+
         var args = Array(CommandLine.arguments.dropFirst())
         if let idx = args.firstIndex(of: "--output"), idx + 1 < args.count {
             JSONOutput.outputPath = args[idx + 1]
@@ -28,7 +33,7 @@ struct AppleBridge: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "apple-bridge",
         abstract: "Native macOS bridge for Apple Calendar, Mail, Reminders, Numbers, Pages, and Keynote.",
-        version: "0.5.0",
+        version: "0.6.3",
         subcommands: [
             Calendars.self,
             Events.self,

@@ -637,85 +637,20 @@ enum MailBridge {
 
     // MARK: - AppleScript Execution
 
-    /// Default osascript timeout: long enough for legitimate per-account or
-    /// per-mailbox searches on large accounts, short enough that a hung
-    /// script returns control to the caller before Mail.app appears frozen
-    /// from the user's perspective. The scope guard in `search()` already
-    /// rejects the worst combinations; this is belt-and-braces.
-    private static let defaultAppleScriptTimeout: TimeInterval = 90
+    /// Mail.app's per-account/per-mailbox fallback can iterate large folders;
+    /// 90s is long enough for legitimate searches on big accounts but short
+    /// enough that node's default 30s timeout (which fires first) plus our
+    /// signal handler still reap osascript before it wedges Mail.app for
+    /// other concurrent apple-bridge instances.
+    private static let mailAppleScriptTimeout: TimeInterval = 90
 
-    private static func runAppleScript(_ script: String, timeoutSeconds: TimeInterval = defaultAppleScriptTimeout) -> String? {
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        task.arguments = ["-e", script]
-
-        let outPipe = Pipe()
-        let errPipe = Pipe()
-        task.standardOutput = outPipe
-        task.standardError = errPipe
-
-        do {
-            try task.run()
-
-            // Watchdog: terminate osascript if it exceeds the timeout. SIGTERM
-            // first so the script gets a chance to clean up; SIGKILL after a
-            // short grace period if it ignores SIGTERM (Apple Events held by
-            // Mail.app can keep an osascript subprocess unresponsive to TERM).
-            let pid = task.processIdentifier
-            let didTimeOut = TimeoutFlag()
-            let watchdog = DispatchWorkItem {
-                guard task.isRunning else { return }
-                didTimeOut.set()
-                task.terminate()
-                DispatchQueue.global().asyncAfter(deadline: .now() + 2) {
-                    if task.isRunning { kill(pid, SIGKILL) }
-                }
-            }
-            DispatchQueue.global().asyncAfter(deadline: .now() + timeoutSeconds, execute: watchdog)
-
-            task.waitUntilExit()
-            watchdog.cancel()
-
-            if didTimeOut.value {
-                JSONOutput.error(
-                    "Mail AppleScript exceeded \(Int(timeoutSeconds))s timeout — killed to free Mail.app. " +
-                    "Narrow the search scope (specific --account or --mailbox) or use --search-in subject."
-                )
-                return nil
-            }
-
-            if task.terminationStatus != 0 {
-                let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
-                let errStr = String(data: errData, encoding: .utf8)?
-                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? "Unknown error"
-
-                if errStr.contains("-1743") || errStr.contains("not allowed") {
-                    JSONOutput.error("Mail automation permission denied. Grant access in System Settings > Privacy & Security > Automation > apple-bridge > Mail.")
-                } else if errStr.contains("-600") || errStr.contains("not running") {
-                    JSONOutput.error("Mail.app is not running. Open Mail.app and try again.")
-                } else {
-                    JSONOutput.error("AppleScript error: \(errStr)")
-                }
-                return nil
-            }
-
-            let data = outPipe.fileHandleForReading.readDataToEndOfFile()
-            return String(data: data, encoding: .utf8)?
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-        } catch {
-            JSONOutput.error("Failed to run osascript: \(error.localizedDescription)")
-            return nil
-        }
-    }
-
-    /// Tiny actor-like flag so the watchdog closure can signal the main
-    /// thread that it fired, without racing with `task.terminationReason`
-    /// (which is only set after the kernel reaps the child).
-    private final class TimeoutFlag {
-        private let lock = NSLock()
-        private var fired = false
-        func set() { lock.lock(); fired = true; lock.unlock() }
-        var value: Bool { lock.lock(); defer { lock.unlock() }; return fired }
+    private static func runAppleScript(_ script: String) -> String? {
+        return OsascriptRunner.run(
+            script: script,
+            timeout: mailAppleScriptTimeout,
+            appName: "Mail",
+            timeoutHint: "Narrow the search scope (specific --account or --mailbox) or use --search-in subject."
+        )
     }
 
     private static func escapeForAppleScript(_ str: String) -> String {

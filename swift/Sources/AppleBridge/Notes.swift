@@ -184,41 +184,7 @@ enum NotesBridge {
     // MARK: - AppleScript plumbing
 
     private static func runAppleScript(_ script: String) -> String? {
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        task.arguments = ["-e", script]
-
-        let outPipe = Pipe()
-        let errPipe = Pipe()
-        task.standardOutput = outPipe
-        task.standardError = errPipe
-
-        do {
-            try task.run()
-            task.waitUntilExit()
-
-            if task.terminationStatus != 0 {
-                let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
-                let errStr = String(data: errData, encoding: .utf8)?
-                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? "Unknown error"
-
-                if errStr.contains("-1743") || errStr.contains("not allowed") {
-                    JSONOutput.error("Notes automation permission denied. Grant access in System Settings > Privacy & Security > Automation > apple-bridge > Notes.")
-                } else if errStr.contains("-600") || errStr.contains("not running") {
-                    JSONOutput.error("Notes.app is not running. Open Notes.app and try again.")
-                } else {
-                    JSONOutput.error("AppleScript error: \(errStr)")
-                }
-                return nil
-            }
-
-            let data = outPipe.fileHandleForReading.readDataToEndOfFile()
-            return String(data: data, encoding: .utf8)?
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-        } catch {
-            JSONOutput.error("Failed to run osascript: \(error.localizedDescription)")
-            return nil
-        }
+        return OsascriptRunner.run(script: script, appName: "Notes")
     }
 
     private static func escapeForAppleScript(_ str: String) -> String {
