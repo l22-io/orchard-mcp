@@ -9,7 +9,7 @@ import Foundation
 enum DoctorBridge {
     static func run() async {
         var report: [String: Any] = [
-            "version": "0.6.4",
+            "version": "0.6.5",
             "platform": "macOS",
             "systemVersion": ProcessInfo.processInfo.operatingSystemVersionString
         ]
