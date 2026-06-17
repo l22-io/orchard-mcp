@@ -1,6 +1,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { bridgeData } from "../bridge.js";
+import { assertIsoDateRangeWithinDays } from "../resourceGuards.js";
+import { OPERATION_PROFILES, safeBridgeData } from "../safety.js";
+
+const MAX_CALENDAR_RANGE_DAYS = 31;
 
 export function registerCalendarTools(server: McpServer): void {
   server.tool(
@@ -8,7 +11,7 @@ export function registerCalendarTools(server: McpServer): void {
     "List all Apple Calendar calendars with account name, type, color, and read-only status.",
     {},
     async () => {
-      const data = await bridgeData(["calendars"]);
+      const data = await safeBridgeData(["calendars"], OPERATION_PROFILES.calendarRead);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -31,11 +34,17 @@ export function registerCalendarTools(server: McpServer): void {
         .describe("Optional calendar ID to filter by (from calendar.list_calendars)"),
     },
     async ({ start, end, calendarId }) => {
+      assertIsoDateRangeWithinDays(
+        start,
+        end,
+        MAX_CALENDAR_RANGE_DAYS,
+        "calendar.list_events"
+      );
       const args = ["events", "--start", start, "--end", end];
       if (calendarId) {
         args.push("--calendar", calendarId);
       }
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.calendarRead);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -62,7 +71,10 @@ export function registerCalendarTools(server: McpServer): void {
       const start = startOfDay.toISOString();
       const end = endOfDay.toISOString();
 
-      const data = await bridgeData(["events", "--start", start, "--end", end]);
+      const data = await safeBridgeData(
+        ["events", "--start", start, "--end", end],
+        OPERATION_PROFILES.calendarRead
+      );
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -78,14 +90,20 @@ export function registerCalendarTools(server: McpServer): void {
       end: z.string().describe("End date in ISO 8601 format"),
     },
     async ({ query, start, end }) => {
-      const data = await bridgeData([
+      assertIsoDateRangeWithinDays(
+        start,
+        end,
+        MAX_CALENDAR_RANGE_DAYS,
+        "calendar.search"
+      );
+      const data = await safeBridgeData([
         "search",
         query,
         "--start",
         start,
         "--end",
         end,
-      ]);
+      ], OPERATION_PROFILES.calendarRead);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };

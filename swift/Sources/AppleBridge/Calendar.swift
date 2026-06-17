@@ -6,6 +6,8 @@ import Foundation
 
 enum CalendarBridge {
     private static let store = EKEventStore()
+    private static let maxCalendarRangeDays: TimeInterval = 31
+    private static let maxCalendarResults = 500
 
     /// Request full calendar access. Returns true if granted.
     static func requestAccess() async -> Bool {
@@ -75,6 +77,9 @@ enum CalendarBridge {
             JSONOutput.error("Invalid end date: \(endISO). Use ISO 8601 format.")
             return
         }
+        guard validateRange(start: startDate, end: endDate, tool: "calendar-list-events") else {
+            return
+        }
 
         var calendars: [EKCalendar]? = nil
         if let calID = calendarID {
@@ -87,7 +92,7 @@ enum CalendarBridge {
         }
 
         let predicate = store.predicateForEvents(withStart: startDate, end: endDate, calendars: calendars)
-        let events = store.events(matching: predicate)
+        let events = Array(store.events(matching: predicate).prefix(maxCalendarResults))
 
         let result: [[String: Any]] = events.map { evt in
             var dict: [String: Any] = [
@@ -147,6 +152,9 @@ enum CalendarBridge {
             JSONOutput.error("Invalid end date: \(endISO)")
             return
         }
+        guard validateRange(start: startDate, end: endDate, tool: "calendar-search-events") else {
+            return
+        }
 
         let predicate = store.predicateForEvents(withStart: startDate, end: endDate, calendars: nil)
         let events = store.events(matching: predicate)
@@ -159,7 +167,7 @@ enum CalendarBridge {
             return title.contains(lowered) || notes.contains(lowered) || location.contains(lowered)
         }
 
-        let result: [[String: Any]] = filtered.map { evt in
+        let result: [[String: Any]] = filtered.prefix(maxCalendarResults).map { evt in
             [
                 "id": evt.eventIdentifier ?? "",
                 "title": evt.title ?? "(no title)",
@@ -180,6 +188,21 @@ enum CalendarBridge {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withFullDate]
         return formatter.date(from: str)
+    }
+
+    private static func validateRange(start: Date, end: Date, tool: String) -> Bool {
+        guard end >= start else {
+            JSONOutput.error("\(tool) requires end date to be on or after start date.")
+            return false
+        }
+
+        let days = end.timeIntervalSince(start) / 86_400
+        guard days <= maxCalendarRangeDays else {
+            JSONOutput.error("\(tool) refuses date ranges over \(Int(maxCalendarRangeDays)) days.")
+            return false
+        }
+
+        return true
     }
 
     private static func calendarTypeName(_ type: EKCalendarType) -> String {

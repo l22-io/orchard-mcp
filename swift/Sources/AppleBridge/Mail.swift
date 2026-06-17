@@ -75,10 +75,12 @@ enum MailBridge {
                 try
                     set msgs to (every message of inbox of acct whose read status is false)
                     set msgCount to count of msgs
+                    set sourceMailbox to "INBOX"
                 on error
                     try
                         set msgs to (every message of mailbox "All Mail" of acct whose read status is false)
                         set msgCount to count of msgs
+                        set sourceMailbox to "All Mail"
                     end try
                 end try
                 set maxItems to \(limit)
@@ -92,7 +94,7 @@ enum MailBridge {
                         set msgDate to date received of msg as «class isot» as string
                         set msgFlagged to flagged status of msg
                         set msgId to message id of msg
-                        set end of msgList to msgId & "|||" & msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (msgFlagged as string) & "|||" & ((count of mail attachments of msg) as string)
+                        set end of msgList to msgId & "|||" & msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (msgFlagged as string) & "|||" & ((count of mail attachments of msg) as string) & "|||" & acctName & "|||" & sourceMailbox
                     end try
                 end repeat
                 set end of resultList to acctName & ":::" & (msgCount as string) & ":::" & (my joinList(msgList, "^^^"))
@@ -187,7 +189,7 @@ enum MailBridge {
                                     set msgRead to read status of msg
                                     set msgFlagged to flagged status of msg
                                     set msgMbox to name of mbox
-                                    set end of resultList to msgId & "|||" & msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (msgRead as string) & "|||" & (msgFlagged as string) & "|||" & ((count of mail attachments of msg) as string) & "|||" & msgMbox
+                                    set end of resultList to msgId & "|||" & msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (msgRead as string) & "|||" & (msgFlagged as string) & "|||" & ((count of mail attachments of msg) as string) & "|||" & (name of acct) & "|||" & msgMbox
                                     set collected to collected + 1
                                 end if
                             end repeat
@@ -254,7 +256,9 @@ enum MailBridge {
                     set msgDate to date received of msg as «class isot» as string
                     set msgRead to read status of msg
                     set msgFlagged to flagged status of msg
-                    set end of resultList to msgId & "|||" & msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (msgRead as string) & "|||" & (msgFlagged as string) & "|||" & ((count of mail attachments of msg) as string)
+                    set msgAccount to "\(escapeForAppleScript(account ?? ""))"
+                    set msgMbox to "\(escapeForAppleScript(mailbox ?? "INBOX"))"
+                    set end of resultList to msgId & "|||" & msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (msgRead as string) & "|||" & (msgFlagged as string) & "|||" & ((count of mail attachments of msg) as string) & "|||" & msgAccount & "|||" & msgMbox
                 end repeat
                 return my joinList(resultList, "^^^") & "###TOTAL:::" & (msgCount as string)
             end tell
@@ -295,28 +299,42 @@ enum MailBridge {
     }
 
     /// Get full message content by message ID.
-    static func readMessage(messageId: String, maxBodyLength: Int) {
+    static func readMessage(messageId: String, maxBodyLength: Int, account: String?, mailbox: String?) {
         let escapedId = escapeForAppleScript(messageId)
-
-        let script = """
-        tell application "Mail"
-            -- Find message: unified inbox covers normal accounts; per-account
-            -- fallback only for accounts where inbox keyword fails (Proton Bridge).
+        let lookupBlock: String
+        if let acct = account, let mbox = mailbox {
+            lookupBlock = """
+            set targetMsg to missing value
+            try
+                set targetMsg to first message of mailbox "\(escapeForAppleScript(mbox))" of account "\(escapeForAppleScript(acct))" whose message id is "\(escapedId)"
+            end try
+            """
+        } else if let acct = account {
+            lookupBlock = """
+            set targetMsg to missing value
+            try
+                set targetMsg to first message of inbox of account "\(escapeForAppleScript(acct))" whose message id is "\(escapedId)"
+            end try
+            """
+        } else if let mbox = mailbox {
+            lookupBlock = """
+            set targetMsg to missing value
+            try
+                set targetMsg to first message of mailbox "\(escapeForAppleScript(mbox))" whose message id is "\(escapedId)"
+            end try
+            """
+        } else {
+            lookupBlock = """
             set targetMsg to missing value
             try
                 set targetMsg to first message of inbox whose message id is "\(escapedId)"
             end try
-            if targetMsg is missing value then
-                repeat with acct in every account
-                    repeat with mbox in every mailbox of acct
-                        try
-                            set targetMsg to first message of mbox whose message id is "\(escapedId)"
-                            exit repeat
-                        end try
-                    end repeat
-                    if targetMsg is not missing value then exit repeat
-                end repeat
-            end if
+            """
+        }
+
+        let script = """
+        tell application "Mail"
+            \(lookupBlock)
             if targetMsg is missing value then
                 return "ERROR_NOT_FOUND"
             end if
@@ -352,7 +370,7 @@ enum MailBridge {
 
         guard let raw = runAppleScript(script) else { return }
         if raw == "ERROR_NOT_FOUND" {
-            JSONOutput.error("Message not found. It may be in a mailbox not searched (try mail.search to locate it first).")
+            JSONOutput.error("Message not found in the requested mailbox. Use mail.search and pass the returned account/mailbox locator.")
             return
         }
         let parts = raw.components(separatedBy: "|||")
@@ -375,6 +393,8 @@ enum MailBridge {
             "flagged": parts[4] == "true",
             "body": body
         ]
+        if let account = account { message["account"] = account }
+        if let mailbox = mailbox { message["mailbox"] = mailbox }
         if parts.count > 6 { message["to"] = parts[6] }
         if parts.count > 7 { message["cc"] = parts[7] }
 
@@ -429,7 +449,7 @@ enum MailBridge {
                                     set msgSubject to subject of msg
                                     set msgSender to sender of msg
                                     set msgDate to date received of msg as «class isot» as string
-                                    set end of resultList to msgId & "|||" & msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (name of acct) & "|||" & ((count of mail attachments of msg) as string)
+                                    set end of resultList to msgId & "|||" & msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (name of acct) & "|||" & ((count of mail attachments of msg) as string) & "|||" & (name of mbox)
                                     set collected to collected + 1
                                 end if
                             end repeat
@@ -461,7 +481,7 @@ enum MailBridge {
                                 set msgSubject to subject of msg
                                 set msgSender to sender of msg
                                 set msgDate to date received of msg as «class isot» as string
-                                set end of resultList to msgId & "|||" & msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (name of acct) & "|||" & ((count of mail attachments of msg) as string)
+                                set end of resultList to msgId & "|||" & msgSubject & "|||" & msgSender & "|||" & msgDate & "|||" & (name of acct) & "|||" & ((count of mail attachments of msg) as string) & "|||" & (name of mbox)
                                 if (count of resultList) >= \(limit) then exit repeat
                             end repeat
                             if (count of resultList) >= \(limit) then exit repeat
@@ -548,12 +568,18 @@ enum MailBridge {
     }
 
     /// Save a specific attachment from a message to disk.
-    static func saveAttachment(messageId: String, index: Int, outputDir: String) {
+    static func saveAttachment(messageId: String, index: Int, outputDir: String, account: String?, mailbox: String?) {
         guard index >= 0 else {
             JSONOutput.error("Attachment index must be non-negative. Got \(index).")
             return
         }
+        guard let acct = account, let mbox = mailbox else {
+            JSONOutput.error("mail-save-attachment requires --account and --mailbox from a recent mail-search/mail-unread/mail-flagged result. Refusing to scan every mailbox by message id.")
+            return
+        }
         let escapedId = escapeForAppleScript(messageId)
+        let escapedAccount = escapeForAppleScript(acct)
+        let escapedMailbox = escapeForAppleScript(mbox)
         guard let resolvedDir = FilesBridge.validatePath(outputDir, mustExist: false) else {
             JSONOutput.error("Output path is outside home directory: \(outputDir)")
             return
@@ -576,25 +602,12 @@ enum MailBridge {
 
         let script = """
         tell application "Mail"
-            -- Find message: unified inbox covers normal accounts; per-account
-            -- fallback only for accounts where inbox keyword fails (Proton Bridge).
             set targetMsg to missing value
             try
-                set targetMsg to first message of inbox whose message id is "\(escapedId)"
+                set targetMsg to first message of mailbox "\(escapedMailbox)" of account "\(escapedAccount)" whose message id is "\(escapedId)"
             end try
             if targetMsg is missing value then
-                repeat with acct in every account
-                    repeat with mbox in every mailbox of acct
-                        try
-                            set targetMsg to first message of mbox whose message id is "\(escapedId)"
-                            exit repeat
-                        end try
-                    end repeat
-                    if targetMsg is not missing value then exit repeat
-                end repeat
-            end if
-            if targetMsg is missing value then
-                return "ERROR:::Message not found"
+                return "ERROR:::Message not found in requested account/mailbox"
             end if
             set attList to every mail attachment of targetMsg
             if (count of attList) < \(asIndex) then
@@ -727,6 +740,12 @@ enum MailBridge {
                         msg["attachmentCount"] = count
                         msg["hasAttachments"] = count > 0
                     }
+                    if fields.count > 6 && !fields[6].isEmpty {
+                        msg["account"] = fields[6].trimmingCharacters(in: .whitespaces)
+                    }
+                    if fields.count > 7 && !fields[7].isEmpty {
+                        msg["mailbox"] = fields[7].trimmingCharacters(in: .whitespaces)
+                    }
                     return msg
                 }
                 account["recentUnread"] = messages
@@ -756,8 +775,11 @@ enum MailBridge {
                 msg["attachmentCount"] = count
                 msg["hasAttachments"] = count > 0
             }
-            if fields.count > 7 {
-                msg["mailbox"] = fields[7].trimmingCharacters(in: .whitespaces)
+            if fields.count > 7 && !fields[7].isEmpty {
+                msg["account"] = fields[7].trimmingCharacters(in: .whitespaces)
+            }
+            if fields.count > 8 && !fields[8].isEmpty {
+                msg["mailbox"] = fields[8].trimmingCharacters(in: .whitespaces)
             }
             return msg
         }
@@ -782,6 +804,9 @@ enum MailBridge {
                 let count = Int(fields[5].trimmingCharacters(in: .whitespaces)) ?? 0
                 msg["attachmentCount"] = count
                 msg["hasAttachments"] = count > 0
+            }
+            if fields.count > 6 && !fields[6].isEmpty {
+                msg["mailbox"] = fields[6].trimmingCharacters(in: .whitespaces)
             }
             return msg
         }

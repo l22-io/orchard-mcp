@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { bridgeData } from "../bridge.js";
+import { OPERATION_PROFILES, safeBridgeData } from "../safety.js";
 
 export function registerContactsTools(server: McpServer): void {
   server.tool(
@@ -8,7 +8,10 @@ export function registerContactsTools(server: McpServer): void {
     "List all contact groups with member counts. Requires Contacts access.",
     {},
     async () => {
-      const data = await bridgeData(["contacts-groups"]);
+      const data = await safeBridgeData(
+        ["contacts-groups"],
+        OPERATION_PROFILES.contactsRead
+      );
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -31,7 +34,7 @@ export function registerContactsTools(server: McpServer): void {
     async ({ query, limit }) => {
       const args = ["contacts-search", "--query", query];
       if (limit) args.push("--limit", String(limit));
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.contactsRead);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -45,7 +48,10 @@ export function registerContactsTools(server: McpServer): void {
       id: z.string().describe("Contact identifier"),
     },
     async ({ id }) => {
-      const data = await bridgeData(["contacts-read", "--id", id]);
+      const data = await safeBridgeData(
+        ["contacts-read", "--id", id],
+        OPERATION_PROFILES.contactsRead
+      );
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };

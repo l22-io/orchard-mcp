@@ -31,14 +31,17 @@ MCP Client (stdio JSON-RPC) -> TypeScript Server (Node.js) -> Swift CLI (apple-b
 
 **Tool modules:** `src/tools/*.ts` each exports a `register*Tools(server)` function. Tools use `server.tool(name, description, zodSchema, asyncHandler)`. Tool names are namespaced: `calendar.*`, `mail.*`, `reminders.*`, `files.*`, `system.*`, `numbers.*`, `pages.*`, `keynote.*`, `notes.*`, `contacts.*`. 65 tools total.
 
+**App Safety:** Tool modules must call `safeBridgeData(args, OPERATION_PROFILES.<profile>)` from `src/safety.ts`, not `bridgeData` directly. The safety layer serializes host-app lanes, applies queue/time/output budgets, and refuses broad requests before they can make Mail.app or other apps unresponsive. Keep [docs/app-safety-audit.md](docs/app-safety-audit.md) current when changing tool scope, timeouts, result limits, or app automation.
+
 **Swift bridge:** `swift/Sources/AppleBridge/` contains a Swift CLI using ArgumentParser. Each subcommand maps to a tool. All output goes through `JSONOutput.success(data)` or `JSONOutput.error(msg)` to maintain the JSON envelope contract.
 
 **stdout is reserved** for JSON-RPC in stdio transport. All diagnostics use stderr.
 
 ## Key Patterns
 
-- Tool handlers call `bridgeData(["subcommand", "--flag", value])` and return `{content: [{type: "text", text: JSON.stringify(data, null, 2)}]}`
+- Tool handlers call `safeBridgeData(["subcommand", "--flag", value], OPERATION_PROFILES.<profile>)` and return `{content: [{type: "text", text: JSON.stringify(data, null, 2)}]}`
 - Zod schemas validate all tool inputs
+- Broad operations should refuse unsafe scopes before launching `apple-bridge`
 - Swift subcommands use `ParsableCommand` (sync) or `AsyncParsableCommand` (async for EventKit)
 - Mail tools use AppleScript (`osascript`); Calendar and Reminders use native EventKit
 - iWork tools (Numbers, Pages, Keynote) use AppleScript for document operations; Numbers bulk cell ops use JXA for native JSON

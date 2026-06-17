@@ -131,4 +131,44 @@ describe("metadata stays in sync", () => {
       assert.match(readme, new RegExp(`apple-bridge ${commandName}\\b`), commandName);
     }
   });
+
+  it("routes every tool module through the app-safety bridge wrapper", () => {
+    const toolModules = [
+      "src/tools/calendar.ts",
+      "src/tools/contacts.ts",
+      "src/tools/files.ts",
+      "src/tools/keynote.ts",
+      "src/tools/mail.ts",
+      "src/tools/notes.ts",
+      "src/tools/numbers.ts",
+      "src/tools/pages.ts",
+      "src/tools/reminders.ts",
+      "src/tools/system.ts",
+    ];
+
+    for (const path of toolModules) {
+      const source = readRepoFile(path);
+      assert.doesNotMatch(source, /from "\.\.\/bridge\.js"/, path);
+      assert.doesNotMatch(source, /\bbridgeData\(/, path);
+      assert.match(source, /from "\.\.\/safety\.js"/, path);
+      assert.match(source, /\bsafeBridgeData\(/, path);
+    }
+  });
+
+  it("documents app-safety guardrails for host applications", () => {
+    const readme = readRepoFile("README.md");
+    const agents = readRepoFile("AGENTS.md");
+    const audit = readRepoFile("docs/app-safety-audit.md");
+
+    for (const doc of [readme, agents, audit]) {
+      assert.match(doc, /App Safety/i);
+      assert.match(doc, /Mail\.app/);
+      assert.match(doc, /refuse/i);
+    }
+    assert.match(audit, /OPERATION_PROFILES/);
+    assert.match(audit, /mail\.save_attachment/);
+    assert.match(audit, /Notes/);
+    assert.match(audit, /Numbers/);
+    assert.match(audit, /Files/);
+  });
 });

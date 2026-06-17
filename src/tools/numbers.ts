@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { bridgeData } from "../bridge.js";
+import { requireNumbersRange } from "../resourceGuards.js";
+import { OPERATION_PROFILES, safeBridgeData } from "../safety.js";
 
 export function registerNumbersTools(server: McpServer): void {
   server.tool(
@@ -21,7 +22,7 @@ export function registerNumbersTools(server: McpServer): void {
       if (limit !== undefined) {
         args.push("--limit", String(limit));
       }
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.fileRead);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -30,19 +31,20 @@ export function registerNumbersTools(server: McpServer): void {
 
   server.tool(
     "numbers.read",
-    "Read data from a Numbers spreadsheet. Optionally specify sheet, table, and cell range.",
+    "Read data from a Numbers spreadsheet. A cell range is required so orchard-mcp does not read an entire table through Apple Events.",
     {
       file: z.string().max(1024).describe("Path to the Numbers file"),
       sheet: z.string().max(256).optional().describe("Sheet name to read from"),
       table: z.string().max(256).optional().describe("Table name to read from"),
-      range: z.string().max(20).optional().describe("Cell range to read (e.g. A1:C10)"),
+      range: z.string().max(20).optional().describe("Cell range to read (required, e.g. A1:C10)"),
     },
     async ({ file, sheet, table, range }) => {
+      requireNumbersRange("numbers.read", range);
       const args = ["numbers-read", "--file", file];
       if (sheet) args.push("--sheet", sheet);
       if (table) args.push("--table", table);
       if (range) args.push("--range", range);
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.numbers);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -64,7 +66,7 @@ export function registerNumbersTools(server: McpServer): void {
       if (sheet) args.push("--sheet", sheet);
       if (table) args.push("--table", table);
       if (range) args.push("--range", range);
-      const result = await bridgeData(args);
+      const result = await safeBridgeData(args, OPERATION_PROFILES.numbers);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
       };
@@ -91,7 +93,7 @@ export function registerNumbersTools(server: McpServer): void {
       const args = ["numbers-create", "--file", file];
       if (initialData) args.push("--data", initialData);
       if (template) args.push("--template", template);
-      const result = await bridgeData(args);
+      const result = await safeBridgeData(args, OPERATION_PROFILES.numbers);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
       };
@@ -105,7 +107,10 @@ export function registerNumbersTools(server: McpServer): void {
       file: z.string().max(1024).describe("Path to the Numbers file"),
     },
     async ({ file }) => {
-      const data = await bridgeData(["numbers-list-sheets", "--file", file]);
+      const data = await safeBridgeData(
+        ["numbers-list-sheets", "--file", file],
+        OPERATION_PROFILES.numbers
+      );
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -120,13 +125,13 @@ export function registerNumbersTools(server: McpServer): void {
       name: z.string().max(10_000).describe("Name for the new sheet"),
     },
     async ({ file, name }) => {
-      const data = await bridgeData([
+      const data = await safeBridgeData([
         "numbers-add-sheet",
         "--file",
         file,
         "--name",
         name,
-      ]);
+      ], OPERATION_PROFILES.numbers);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -141,13 +146,13 @@ export function registerNumbersTools(server: McpServer): void {
       name: z.string().max(10_000).describe("Name of the sheet to remove"),
     },
     async ({ file, name }) => {
-      const data = await bridgeData([
+      const data = await safeBridgeData([
         "numbers-remove-sheet",
         "--file",
         file,
         "--name",
         name,
-      ]);
+      ], OPERATION_PROFILES.numbers);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -164,11 +169,12 @@ export function registerNumbersTools(server: McpServer): void {
       range: z.string().max(20).optional().describe("Cell range (e.g. A1:C10)"),
     },
     async ({ file, sheet, table, range }) => {
+      requireNumbersRange("numbers.get_formulas", range);
       const args = ["numbers-get-formulas", "--file", file];
       if (sheet) args.push("--sheet", sheet);
       if (table) args.push("--table", table);
       if (range) args.push("--range", range);
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.numbers);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -192,7 +198,7 @@ export function registerNumbersTools(server: McpServer): void {
     async ({ file, format, dest }) => {
       const args = ["numbers-export", "--file", file, "--format", format];
       if (dest) args.push("--dest", dest);
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.numbers);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -206,7 +212,10 @@ export function registerNumbersTools(server: McpServer): void {
       file: z.string().max(1024).describe("Path to the Numbers file"),
     },
     async ({ file }) => {
-      const data = await bridgeData(["numbers-info", "--file", file]);
+      const data = await safeBridgeData(
+        ["numbers-info", "--file", file],
+        OPERATION_PROFILES.numbers
+      );
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };

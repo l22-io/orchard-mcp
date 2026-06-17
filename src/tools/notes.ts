@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { bridgeData } from "../bridge.js";
+import { normalizeNotesSearchIn } from "../resourceGuards.js";
+import { OPERATION_PROFILES, safeBridgeData } from "../safety.js";
 
 export function registerNotesTools(server: McpServer): void {
   server.tool(
@@ -8,7 +9,10 @@ export function registerNotesTools(server: McpServer): void {
     "List all Notes folders grouped by account with note counts. Requires Notes.app to be running and Automation permission.",
     {},
     async () => {
-      const data = await bridgeData(["notes-folders"]);
+      const data = await safeBridgeData(
+        ["notes-folders"],
+        OPERATION_PROFILES.notes
+      );
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -40,7 +44,7 @@ export function registerNotesTools(server: McpServer): void {
       if (folder) args.push("--folder", folder);
       if (account) args.push("--account", account);
       if (limit) args.push("--limit", String(limit));
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.notes);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -49,13 +53,13 @@ export function registerNotesTools(server: McpServer): void {
 
   server.tool(
     "notes.search",
-    "Search notes by title, body, or both. Returns headers only. Requires Notes.app to be running.",
+    "Search notes by title. Broad body/all-note plaintext search is refused because it can make Notes.app unresponsive; use notes.list_notes plus notes.read_note for specific notes. Requires Notes.app to be running.",
     {
       query: z.string().describe("Search query"),
       searchIn: z
         .enum(["title", "body", "all"])
         .optional()
-        .describe("Fields to search (default: all)"),
+        .describe("Fields to search (default: title). body/all are refused for app safety."),
       limit: z
         .number()
         .int()
@@ -65,10 +69,11 @@ export function registerNotesTools(server: McpServer): void {
         .describe("Max results (default: 20, max: 200)"),
     },
     async ({ query, searchIn, limit }) => {
+      const safeSearchIn = normalizeNotesSearchIn(searchIn);
       const args = ["notes-search", "--query", query];
-      if (searchIn) args.push("--search-in", searchIn);
+      args.push("--search-in", safeSearchIn);
       if (limit) args.push("--limit", String(limit));
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.notes);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -93,7 +98,7 @@ export function registerNotesTools(server: McpServer): void {
       if (maxBodyLength !== undefined) {
         args.push("--max-body-length", String(maxBodyLength));
       }
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.notes);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };

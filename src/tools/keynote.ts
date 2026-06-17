@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { bridgeData } from "../bridge.js";
+import { requireKeynoteSlideForImageExport } from "../resourceGuards.js";
+import { OPERATION_PROFILES, safeBridgeData } from "../safety.js";
 
 export function registerKeynoteTools(server: McpServer): void {
   server.tool(
@@ -21,7 +22,7 @@ export function registerKeynoteTools(server: McpServer): void {
       if (limit !== undefined) {
         args.push("--limit", String(limit));
       }
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.fileRead);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -45,7 +46,7 @@ export function registerKeynoteTools(server: McpServer): void {
       if (slide !== undefined) {
         args.push("--slide", String(slide));
       }
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.keynote);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -66,7 +67,7 @@ export function registerKeynoteTools(server: McpServer): void {
     async ({ file, theme }) => {
       const args = ["keynote-create", "--file", file];
       if (theme) args.push("--theme", theme);
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.keynote);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -100,7 +101,7 @@ export function registerKeynoteTools(server: McpServer): void {
       if (body) args.push("--body", body);
       if (notes) args.push("--notes", notes);
       if (position !== undefined) args.push("--position", String(position));
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.keynote);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -128,7 +129,7 @@ export function registerKeynoteTools(server: McpServer): void {
       if (title) args.push("--title", title);
       if (body) args.push("--body", body);
       if (notes) args.push("--notes", notes);
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.keynote);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -143,13 +144,13 @@ export function registerKeynoteTools(server: McpServer): void {
       slide: z.number().int().min(1).describe("Slide index to remove (1-based)"),
     },
     async ({ file, slide }) => {
-      const data = await bridgeData([
+      const data = await safeBridgeData([
         "keynote-remove-slide",
         "--file",
         file,
         "--slide",
         String(slide),
-      ]);
+      ], OPERATION_PROFILES.keynote);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -165,7 +166,7 @@ export function registerKeynoteTools(server: McpServer): void {
       to: z.number().int().min(1).describe("Target slide index (1-based)"),
     },
     async ({ file, from, to }) => {
-      const data = await bridgeData([
+      const data = await safeBridgeData([
         "keynote-reorder-slides",
         "--file",
         file,
@@ -173,7 +174,7 @@ export function registerKeynoteTools(server: McpServer): void {
         String(from),
         "--to",
         String(to),
-      ]);
+      ], OPERATION_PROFILES.keynote);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -187,7 +188,10 @@ export function registerKeynoteTools(server: McpServer): void {
       file: z.string().max(1024).describe("Path to the Keynote file"),
     },
     async ({ file }) => {
-      const data = await bridgeData(["keynote-list-slides", "--file", file]);
+      const data = await safeBridgeData(
+        ["keynote-list-slides", "--file", file],
+        OPERATION_PROFILES.keynote
+      );
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -199,7 +203,10 @@ export function registerKeynoteTools(server: McpServer): void {
     "List all available Keynote themes.",
     {},
     async () => {
-      const data = await bridgeData(["keynote-list-themes"]);
+      const data = await safeBridgeData(
+        ["keynote-list-themes"],
+        OPERATION_PROFILES.keynote
+      );
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -208,7 +215,7 @@ export function registerKeynoteTools(server: McpServer): void {
 
   server.tool(
     "keynote.export",
-    "Export a Keynote presentation to PDF, PowerPoint, PNG, or JPEG.",
+    "Export a Keynote presentation to PDF, PowerPoint, PNG, or JPEG. PNG/JPEG exports require a slide index so Keynote is not asked to render every slide at once.",
     {
       file: z.string().max(1024).describe("Path to the Keynote file"),
       format: z
@@ -227,10 +234,11 @@ export function registerKeynoteTools(server: McpServer): void {
         .describe("Export only this slide index (1-based, for image formats)"),
     },
     async ({ file, format, dest, slide }) => {
+      requireKeynoteSlideForImageExport(format, slide);
       const args = ["keynote-export", "--file", file, "--format", format];
       if (dest) args.push("--dest", dest);
       if (slide !== undefined) args.push("--slide", String(slide));
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.keynote);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -244,7 +252,10 @@ export function registerKeynoteTools(server: McpServer): void {
       file: z.string().max(1024).describe("Path to the Keynote file"),
     },
     async ({ file }) => {
-      const data = await bridgeData(["keynote-info", "--file", file]);
+      const data = await safeBridgeData(
+        ["keynote-info", "--file", file],
+        OPERATION_PROFILES.keynote
+      );
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };

@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { bridgeData } from "../bridge.js";
+import { OPERATION_PROFILES, safeBridgeData } from "../safety.js";
 
 export function registerPagesTools(server: McpServer): void {
   server.tool(
@@ -21,7 +21,7 @@ export function registerPagesTools(server: McpServer): void {
       if (limit !== undefined) {
         args.push("--limit", String(limit));
       }
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.fileRead);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -35,7 +35,10 @@ export function registerPagesTools(server: McpServer): void {
       file: z.string().max(1024).describe("Path to the Pages file"),
     },
     async ({ file }) => {
-      const data = await bridgeData(["pages-read", "--file", file]);
+      const data = await safeBridgeData(
+        ["pages-read", "--file", file],
+        OPERATION_PROFILES.pages
+      );
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -50,13 +53,13 @@ export function registerPagesTools(server: McpServer): void {
       text: z.string().max(5_000_000).describe("Text to write as the document body"),
     },
     async ({ file, text }) => {
-      const data = await bridgeData([
+      const data = await safeBridgeData([
         "pages-write",
         "--file",
         file,
         "--text",
         text,
-      ]);
+      ], OPERATION_PROFILES.pages);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -83,7 +86,7 @@ export function registerPagesTools(server: McpServer): void {
       const args = ["pages-create", "--file", file];
       if (text) args.push("--text", text);
       if (template) args.push("--template", template);
-      const result = await bridgeData(args);
+      const result = await safeBridgeData(args, OPERATION_PROFILES.pages);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
       };
@@ -113,7 +116,7 @@ export function registerPagesTools(server: McpServer): void {
         replace,
       ];
       if (all) args.push("--all");
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.pages);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -132,7 +135,7 @@ export function registerPagesTools(server: McpServer): void {
     },
     async ({ file, data: tableData }) => {
       const args = ["pages-insert-table", "--file", file, "--data", tableData];
-      const result = await bridgeData(args);
+      const result = await safeBridgeData(args, OPERATION_PROFILES.pages);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
       };
@@ -146,7 +149,10 @@ export function registerPagesTools(server: McpServer): void {
       file: z.string().max(1024).describe("Path to the Pages file"),
     },
     async ({ file }) => {
-      const data = await bridgeData(["pages-list-sections", "--file", file]);
+      const data = await safeBridgeData(
+        ["pages-list-sections", "--file", file],
+        OPERATION_PROFILES.pages
+      );
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -170,7 +176,7 @@ export function registerPagesTools(server: McpServer): void {
     async ({ file, format, dest }) => {
       const args = ["pages-export", "--file", file, "--format", format];
       if (dest) args.push("--dest", dest);
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.pages);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -184,7 +190,10 @@ export function registerPagesTools(server: McpServer): void {
       file: z.string().max(1024).describe("Path to the Pages file"),
     },
     async ({ file }) => {
-      const data = await bridgeData(["pages-info", "--file", file]);
+      const data = await safeBridgeData(
+        ["pages-info", "--file", file],
+        OPERATION_PROFILES.pages
+      );
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };

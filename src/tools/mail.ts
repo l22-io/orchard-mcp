@@ -1,13 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { bridgeData } from "../bridge.js";
-
-// Reason: Mail tools that iterate mailboxes via AppleScript can legitimately
-// run for a minute or more on large accounts. The Swift bridge has a 90s
-// osascript watchdog (Mail.swift `defaultAppleScriptTimeout`); the TS timeout
-// must outlive that so the Swift watchdog reports a clean error instead of
-// being cut off mid-execution by the TS-side process-group kill.
-const MAIL_SCAN_TIMEOUT_MS = 120_000;
+import { appendMailLocatorArgs, requireMailLocator } from "../mailSafety.js";
+import { OPERATION_PROFILES, safeBridgeData } from "../safety.js";
 
 export function registerMailTools(server: McpServer): void {
   server.tool(
@@ -15,7 +9,10 @@ export function registerMailTools(server: McpServer): void {
     "List all Apple Mail accounts with their mailboxes and unread counts. Requires Mail.app to be running.",
     {},
     async () => {
-      const data = await bridgeData(["mail-accounts"]);
+      const data = await safeBridgeData(
+        ["mail-accounts"],
+        OPERATION_PROFILES.mailMetadata
+      );
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -41,7 +38,7 @@ export function registerMailTools(server: McpServer): void {
       if (limit) {
         args.push("--limit", String(limit));
       }
-      const data = await bridgeData(args, { timeoutMs: MAIL_SCAN_TIMEOUT_MS });
+      const data = await safeBridgeData(args, OPERATION_PROFILES.mailScan);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -103,7 +100,7 @@ export function registerMailTools(server: McpServer): void {
       if (offset !== undefined) {
         args.push("--offset", String(offset));
       }
-      const data = await bridgeData(args, { timeoutMs: MAIL_SCAN_TIMEOUT_MS });
+      const data = await safeBridgeData(args, OPERATION_PROFILES.mailScan);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -112,11 +109,19 @@ export function registerMailTools(server: McpServer): void {
 
   server.tool(
     "mail.read_message",
-    "Get the full content of an email message by its message ID (from mail.search or mail.unread_summary). Returns subject, sender, date, body, to, cc, and attachments (name, MIME type, index for use with mail.save_attachment).",
+    "Get the full content of an email message by its message ID (from mail.search or mail.unread_summary). Pass account and mailbox from the search result when available so Mail.app can open the message without scanning every mailbox. Returns subject, sender, date, body, to, cc, and attachments (name, MIME type, index for use with mail.save_attachment).",
     {
       messageId: z
         .string()
         .describe("Message ID (from mail.search or mail.unread_summary results)"),
+      account: z
+        .string()
+        .optional()
+        .describe("Mail account name from the message search/list result"),
+      mailbox: z
+        .string()
+        .optional()
+        .describe("Mailbox name/path from the message search/list result"),
       maxBodyLength: z
         .number()
         .int()
@@ -125,12 +130,13 @@ export function registerMailTools(server: McpServer): void {
         .optional()
         .describe("Max body characters to return (default: 4000, max: 1_000_000). Use 0 for unlimited."),
     },
-    async ({ messageId, maxBodyLength }) => {
+    async ({ messageId, account, mailbox, maxBodyLength }) => {
       const args = ["mail-message", "--id", messageId];
+      appendMailLocatorArgs(args, { account, mailbox });
       if (maxBodyLength !== undefined) {
         args.push("--max-body-length", String(maxBodyLength));
       }
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.mailMetadata);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -180,7 +186,7 @@ export function registerMailTools(server: McpServer): void {
       if (account) {
         args.push("--account", account);
       }
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.mailWrite);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -215,7 +221,7 @@ export function registerMailTools(server: McpServer): void {
       if (offset !== undefined) {
         args.push("--offset", String(offset));
       }
-      const data = await bridgeData(args, { timeoutMs: MAIL_SCAN_TIMEOUT_MS });
+      const data = await safeBridgeData(args, OPERATION_PROFILES.mailScan);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -224,11 +230,19 @@ export function registerMailTools(server: McpServer): void {
 
   server.tool(
     "mail.save_attachment",
-    "Save an email attachment to disk. Use mail.read_message first to see available attachments and their indices. Returns the saved file path. Requires Mail.app to be running.",
+    "Save an email attachment to disk. Requires account and mailbox from the message search/list result so Mail.app does not scan every mailbox by message ID. Use mail.read_message first to see available attachments and their indices. Returns the saved file path. Requires Mail.app to be running.",
     {
       messageId: z
         .string()
         .describe("Message ID (from mail.search or mail.read_message results)"),
+      account: z
+        .string()
+        .optional()
+        .describe("Mail account name from the message search/list result"),
+      mailbox: z
+        .string()
+        .optional()
+        .describe("Mailbox name/path from the message search/list result"),
       index: z
         .number()
         .int()
@@ -239,7 +253,8 @@ export function registerMailTools(server: McpServer): void {
         .optional()
         .describe("Output directory (default: /tmp/orchard-mcp-attachments)"),
     },
-    async ({ messageId, index, path }) => {
+    async ({ messageId, account, mailbox, index, path }) => {
+      requireMailLocator("mail.save_attachment", { account, mailbox });
       const args = [
         "mail-save-attachment",
         "--id",
@@ -247,10 +262,11 @@ export function registerMailTools(server: McpServer): void {
         "--index",
         String(index),
       ];
+      appendMailLocatorArgs(args, { account, mailbox });
       if (path) {
         args.push("--path", path);
       }
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.mailWrite);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };

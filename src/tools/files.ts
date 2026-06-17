@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { bridgeData } from "../bridge.js";
+import { assertBatchSize } from "../resourceGuards.js";
+import { OPERATION_PROFILES, safeBridgeData } from "../safety.js";
 
 export function registerFileTools(server: McpServer): void {
   server.tool(
@@ -28,7 +29,7 @@ export function registerFileTools(server: McpServer): void {
       if (path) args.push("--path", path);
       if (recursive) args.push("--recursive");
       if (depth !== undefined) args.push("--depth", String(depth));
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.fileRead);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -46,7 +47,10 @@ export function registerFileTools(server: McpServer): void {
         ),
     },
     async ({ path }) => {
-      const data = await bridgeData(["file-info", "--path", path]);
+      const data = await safeBridgeData(
+        ["file-info", "--path", path],
+        OPERATION_PROFILES.fileRead
+      );
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -86,7 +90,7 @@ export function registerFileTools(server: McpServer): void {
       const args = ["file-search", "--query", query];
       if (kind) args.push("--kind", kind);
       if (scope) args.push("--scope", scope);
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.fileRead);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -104,7 +108,10 @@ export function registerFileTools(server: McpServer): void {
         ),
     },
     async ({ path }) => {
-      const data = await bridgeData(["file-read", "--path", path]);
+      const data = await safeBridgeData(
+        ["file-read", "--path", path],
+        OPERATION_PROFILES.fileRead
+      );
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -125,11 +132,12 @@ export function registerFileTools(server: McpServer): void {
         .describe("Array of move operations ({source, destination} pairs)"),
     },
     async ({ operations }) => {
-      const data = await bridgeData([
+      assertBatchSize("files.move", operations.length, 50);
+      const data = await safeBridgeData([
         "file-move",
         "--items",
         JSON.stringify(operations),
-      ]);
+      ], OPERATION_PROFILES.fileWrite);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -144,13 +152,13 @@ export function registerFileTools(server: McpServer): void {
       destination: z.string().describe("Destination path"),
     },
     async ({ source, destination }) => {
-      const data = await bridgeData([
+      const data = await safeBridgeData([
         "file-copy",
         "--source",
         source,
         "--dest",
         destination,
-      ]);
+      ], OPERATION_PROFILES.fileWrite);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -164,7 +172,10 @@ export function registerFileTools(server: McpServer): void {
       path: z.string().describe("Directory path to create"),
     },
     async ({ path }) => {
-      const data = await bridgeData(["file-create-folder", "--path", path]);
+      const data = await safeBridgeData(
+        ["file-create-folder", "--path", path],
+        OPERATION_PROFILES.fileWrite
+      );
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -178,7 +189,10 @@ export function registerFileTools(server: McpServer): void {
       path: z.string().describe("File or folder path to move to Trash"),
     },
     async ({ path }) => {
-      const data = await bridgeData(["file-trash", "--path", path]);
+      const data = await safeBridgeData(
+        ["file-trash", "--path", path],
+        OPERATION_PROFILES.fileWrite
+      );
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };

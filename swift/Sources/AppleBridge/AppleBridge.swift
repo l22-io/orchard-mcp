@@ -223,11 +223,17 @@ struct MailMessage: AsyncParsableCommand {
     @Option(name: .long, help: "Message ID (from mail-search or mail-unread)")
     var id: String
 
+    @Option(name: .long, help: "Mail account name from the search/list result")
+    var account: String?
+
+    @Option(name: .long, help: "Mailbox name/path from the search/list result")
+    var mailbox: String?
+
     @Option(name: .long, help: "Max body characters to return (default: 4000, 0 = unlimited)")
     var maxBodyLength: Int = 4000
 
     func run() async throws {
-        MailBridge.readMessage(messageId: id, maxBodyLength: maxBodyLength)
+        MailBridge.readMessage(messageId: id, maxBodyLength: maxBodyLength, account: account, mailbox: mailbox)
     }
 }
 
@@ -289,6 +295,12 @@ struct MailSaveAttachment: AsyncParsableCommand {
     @Option(name: .long, help: "Message ID (from mail-search or mail-unread)")
     var id: String
 
+    @Option(name: .long, help: "Mail account name from the search/list result")
+    var account: String?
+
+    @Option(name: .long, help: "Mailbox name/path from the search/list result")
+    var mailbox: String?
+
     @Option(name: .long, help: "Attachment index (0-based, from mail-message output)")
     var index: Int
 
@@ -296,7 +308,7 @@ struct MailSaveAttachment: AsyncParsableCommand {
     var path: String = "/tmp/orchard-mcp-attachments"
 
     func run() async throws {
-        MailBridge.saveAttachment(messageId: id, index: index, outputDir: path)
+        MailBridge.saveAttachment(messageId: id, index: index, outputDir: path, account: account, mailbox: mailbox)
     }
 }
 

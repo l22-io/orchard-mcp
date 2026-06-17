@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { bridgeData } from "../bridge.js";
+import { OPERATION_PROFILES, safeBridgeData } from "../safety.js";
 
 export function registerReminderTools(server: McpServer): void {
   server.tool(
@@ -8,7 +8,10 @@ export function registerReminderTools(server: McpServer): void {
     "List all Apple Reminders lists with account name, color, and modification status.",
     {},
     async () => {
-      const data = await bridgeData(["reminder-lists"]);
+      const data = await safeBridgeData(
+        ["reminder-lists"],
+        OPERATION_PROFILES.remindersRead
+      );
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -29,8 +32,11 @@ export function registerReminderTools(server: McpServer): void {
         .describe("Filter reminders by status (default: incomplete)"),
       limit: z
         .number()
+        .int()
+        .min(1)
+        .max(200)
         .optional()
-        .describe("Max reminders to return (default: 50)"),
+        .describe("Max reminders to return (default: 50, max: 200)"),
     },
     async ({ list, filter, limit }) => {
       const args = ["reminders"];
@@ -43,7 +49,7 @@ export function registerReminderTools(server: McpServer): void {
       if (limit !== undefined) {
         args.push("--limit", String(limit));
       }
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.remindersRead);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -55,7 +61,10 @@ export function registerReminderTools(server: McpServer): void {
     "Get incomplete reminders due today plus any overdue reminders across all lists.",
     {},
     async () => {
-      const data = await bridgeData(["reminders-today"]);
+      const data = await safeBridgeData(
+        ["reminders-today"],
+        OPERATION_PROFILES.remindersRead
+      );
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -69,7 +78,10 @@ export function registerReminderTools(server: McpServer): void {
       name: z.string().describe("Name for the new list"),
     },
     async ({ name }) => {
-      const data = await bridgeData(["reminder-create-list", "--name", name]);
+      const data = await safeBridgeData(
+        ["reminder-create-list", "--name", name],
+        OPERATION_PROFILES.remindersWrite
+      );
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -103,7 +115,7 @@ export function registerReminderTools(server: McpServer): void {
       if (notes) {
         args.push("--notes", notes);
       }
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.remindersWrite);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -117,7 +129,10 @@ export function registerReminderTools(server: McpServer): void {
       id: z.string().describe("Reminder ID (from reminders.list_reminders output)"),
     },
     async ({ id }) => {
-      const data = await bridgeData(["reminder-complete", "--id", id]);
+      const data = await safeBridgeData(
+        ["reminder-complete", "--id", id],
+        OPERATION_PROFILES.remindersWrite
+      );
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -131,7 +146,10 @@ export function registerReminderTools(server: McpServer): void {
       id: z.string().describe("Reminder ID (from reminders.list_reminders output)"),
     },
     async ({ id }) => {
-      const data = await bridgeData(["reminder-delete", "--id", id]);
+      const data = await safeBridgeData(
+        ["reminder-delete", "--id", id],
+        OPERATION_PROFILES.remindersWrite
+      );
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
@@ -153,7 +171,7 @@ export function registerReminderTools(server: McpServer): void {
       if (force) {
         args.push("--force");
       }
-      const data = await bridgeData(args);
+      const data = await safeBridgeData(args, OPERATION_PROFILES.remindersWrite);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };

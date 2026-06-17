@@ -27,6 +27,24 @@ that invokes tools receives the returned data (calendar events, emails, reminder
 files, notes, contacts, and documents) as part of the conversation context. Be mindful
 of what you ask the client to access.
 
+## App Safety
+
+orchard-mcp refuses broad requests rather than making host apps unresponsive. Mail.app,
+Notes, Numbers, Pages, and Keynote calls are serialized through app-specific safety
+lanes with timeout, queue, and output-size budgets. Expensive scopes are rejected before
+AppleScript/JXA starts.
+
+Examples:
+
+- `mail.save_attachment` requires `account` and `mailbox` from a recent Mail result.
+- Notes body/all search is refused; use title search, then `notes.read_note`.
+- `numbers.read` and `numbers.get_formulas` require a cell range.
+- PNG/JPEG Keynote export requires a single slide index.
+- Calendar list/search ranges are capped at 31 days.
+
+See [docs/app-safety-audit.md](docs/app-safety-audit.md) for the current audit and
+guardrails.
+
 The only permissions needed are macOS TCC grants (for example, "Allow access to
 Calendars"), triggered automatically on first use or during setup.
 
@@ -113,10 +131,10 @@ Add to your MCP settings:
 - `mail.list_accounts` - List all mail accounts with mailboxes and unread counts
 - `mail.unread_summary` - Unread count per account with recent message headers
 - `mail.search` - Search messages by subject, sender, body, or all fields with pagination
-- `mail.read_message` - Get message content by ID with configurable body truncation
+- `mail.read_message` - Get message content by ID with configurable body truncation; pass account/mailbox locators when available
 - `mail.flagged` - List flagged messages across all accounts with pagination
 - `mail.create_draft` - Create a draft email in Mail.app for review
-- `mail.save_attachment` - Save an email attachment to disk by message ID and index
+- `mail.save_attachment` - Save an email attachment to disk by message ID, index, account, and mailbox
 
 ### Reminders
 
@@ -147,13 +165,13 @@ Add to your MCP settings:
 ### Numbers
 
 - `numbers.search` - Find Numbers spreadsheets with Spotlight
-- `numbers.read` - Read table data from a spreadsheet
+- `numbers.read` - Read table data from a spreadsheet within a required cell range
 - `numbers.write` - Write table data to a spreadsheet
 - `numbers.create` - Create a new spreadsheet
 - `numbers.list_sheets` - List sheets and tables
 - `numbers.add_sheet` - Add a sheet
 - `numbers.remove_sheet` - Remove a sheet
-- `numbers.get_formulas` - Read formulas
+- `numbers.get_formulas` - Read formulas within a required cell range
 - `numbers.export` - Export as CSV, PDF, or XLSX
 - `numbers.info` - Inspect spreadsheet metadata
 
@@ -180,14 +198,14 @@ Add to your MCP settings:
 - `keynote.reorder_slides` - Move slides
 - `keynote.list_slides` - List slides
 - `keynote.list_themes` - List available themes
-- `keynote.export` - Export as PDF, PPTX, PNG, or JPEG
+- `keynote.export` - Export as PDF, PPTX, PNG, or JPEG; PNG/JPEG requires a slide index
 - `keynote.info` - Inspect deck metadata
 
 ### Notes
 
 - `notes.list_folders` - List Notes folders
 - `notes.list_notes` - List notes with optional folder filtering
-- `notes.search` - Search notes by title, body, or both
+- `notes.search` - Search notes by title; body/all search is refused for app safety
 - `notes.read_note` - Read a note by ID
 
 ### Contacts

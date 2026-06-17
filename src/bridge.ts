@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readFile, unlink, access } from "node:fs/promises";
+import { readFile, unlink, access, stat } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 
@@ -63,9 +63,17 @@ export interface BridgeOptions {
    * be orphaned and keep Mail.app / Notes.app wedged on Apple Events.
    */
   timeoutMs?: number;
+  /**
+   * Maximum stdout/output-file bytes accepted from apple-bridge.
+   * Defaults to 10 MiB. Tool families with large native/app responses should
+   * lower this through the safety layer so one call cannot monopolize memory
+   * or flood the MCP client.
+   */
+  maxOutputBytes?: number;
 }
 
 const DEFAULT_TIMEOUT_MS = 30_000;
+const DEFAULT_MAX_OUTPUT_BYTES = 10 * 1024 * 1024;
 const SIGKILL_GRACE_MS = 2_000;
 
 /**
@@ -79,7 +87,8 @@ export async function callBridge(
 ): Promise<BridgeResponse> {
   const bin = getBridgePath();
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const direct = await runBridgeProcess(bin, args, timeoutMs);
+  const maxOutputBytes = opts.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES;
+  const direct = await runBridgeProcess(bin, args, timeoutMs, maxOutputBytes);
 
   if (direct.status === "error" || direct.parsed == null) {
     if (direct.spawnError) {
@@ -101,7 +110,7 @@ export async function callBridge(
       typeof parsed.error === "string" &&
       parsed.error.includes("access denied")
     ) {
-      return callBridgeViaApp(args, timeoutMs);
+      return callBridgeViaApp(args, timeoutMs, maxOutputBytes);
     }
     return parsed;
   }
@@ -126,7 +135,8 @@ interface DirectResult {
 function runBridgeProcess(
   bin: string,
   args: string[],
-  timeoutMs: number
+  timeoutMs: number,
+  maxOutputBytes: number
 ): Promise<DirectResult> {
   return new Promise((resolvePromise) => {
     let child;
@@ -150,7 +160,6 @@ function runBridgeProcess(
     const chunks: Buffer[] = [];
     const errChunks: Buffer[] = [];
     let totalBytes = 0;
-    const MAX_BYTES = 10 * 1024 * 1024;
     let settled = false;
     let timedOut = false;
     let killEscalated = false;
@@ -196,11 +205,11 @@ function runBridgeProcess(
 
     child.stdout?.on("data", (d: Buffer) => {
       totalBytes += d.length;
-      if (totalBytes > MAX_BYTES) {
+      if (totalBytes > maxOutputBytes) {
         escalateKill();
         settle({
           status: "error",
-          spawnError: `apple-bridge output exceeded ${MAX_BYTES} bytes`,
+          spawnError: `apple-bridge output exceeded ${maxOutputBytes} bytes`,
         });
         return;
       }
@@ -246,7 +255,8 @@ function runBridgeProcess(
  */
 async function callBridgeViaApp(
   args: string[],
-  timeoutMs: number
+  timeoutMs: number,
+  maxOutputBytes: number
 ): Promise<BridgeResponse> {
   const appPath = getAppBundlePath();
   const outputFile = resolve(tmpdir(), `apple-bridge-${randomUUID()}.json`);
@@ -269,6 +279,11 @@ async function callBridgeViaApp(
 
     const timeout = setTimeout(() => {
       child.kill();
+      void killAppFallbackProcesses(outputFile, "SIGTERM").then(() => {
+        setTimeout(() => {
+          void killAppFallbackProcesses(outputFile, "SIGKILL");
+        }, SIGKILL_GRACE_MS).unref();
+      });
       resolvePromise({
         status: "error",
         error: `apple-bridge .app bundle timed out after ${timeoutMs}ms`,
@@ -278,6 +293,15 @@ async function callBridgeViaApp(
     child.on("close", async () => {
       clearTimeout(timeout);
       try {
+        const info = await stat(outputFile);
+        if (info.size > maxOutputBytes) {
+          await unlink(outputFile).catch(() => {});
+          resolvePromise({
+            status: "error",
+            error: `apple-bridge output exceeded ${maxOutputBytes} bytes`,
+          });
+          return;
+        }
         const data = await readFile(outputFile, "utf-8");
         await unlink(outputFile).catch(() => {});
         const parsed = JSON.parse(data) as BridgeResponse;
@@ -298,6 +322,36 @@ async function callBridgeViaApp(
         status: "error",
         error: `Failed to launch .app bundle: ${err.message}`,
       });
+    });
+  });
+}
+
+function killAppFallbackProcesses(
+  outputFile: string,
+  signal: NodeJS.Signals
+): Promise<void> {
+  return new Promise((resolvePromise) => {
+    const pgrep = spawn("/usr/bin/pgrep", ["-f", outputFile], {
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    const chunks: Buffer[] = [];
+    pgrep.stdout?.on("data", (chunk: Buffer) => chunks.push(chunk));
+    pgrep.on("error", () => resolvePromise());
+    pgrep.on("close", () => {
+      const pids = Buffer.concat(chunks)
+        .toString("utf8")
+        .split(/\s+/)
+        .map((raw) => parseInt(raw, 10))
+        .filter((pid) => Number.isFinite(pid) && pid > 0 && pid !== process.pid);
+
+      for (const pid of pids) {
+        try {
+          process.kill(pid, signal);
+        } catch {
+          // The fallback app process may have exited between pgrep and kill.
+        }
+      }
+      resolvePromise();
     });
   });
 }

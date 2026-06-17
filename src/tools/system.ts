@@ -1,5 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { bridgeData } from "../bridge.js";
+import { OPERATION_PROFILES, safeBridgeData } from "../safety.js";
 
 export function registerSystemTools(server: McpServer): void {
   server.tool(
@@ -7,7 +7,10 @@ export function registerSystemTools(server: McpServer): void {
     "Check orchard-mcp permissions status, list accessible Calendar accounts, Mail accounts, and Reminders status. Run this first to diagnose access issues.",
     {},
     async () => {
-      const data = await bridgeData(["doctor"]);
+      const data = await safeBridgeData(
+        ["doctor"],
+        OPERATION_PROFILES.systemDoctor
+      );
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };

@@ -1,9 +1,17 @@
 import Foundation
+import Darwin
 import PDFKit
 import UniformTypeIdentifiers
 import Vision
 
 enum FilesBridge {
+    private static let processTimeout: TimeInterval = 10
+    private static let processSigkillGrace: TimeInterval = 1
+    private static let maxListItems = 1_000
+    private static let maxPDFPages = 50
+    private static let maxOCRImageBytes: Int64 = 10 * 1024 * 1024
+    private static let maxTextutilBytes: Int64 = 20 * 1024 * 1024
+
     private static var home: String {
         FileManager.default.homeDirectoryForCurrentUser.path
     }
@@ -69,6 +77,7 @@ enum FilesBridge {
                     }
                     if let entry = fileEntry(itemURL) {
                         items.append(entry)
+                        if items.count >= maxListItems { break }
                     }
                 }
             }
@@ -82,6 +91,7 @@ enum FilesBridge {
                 for itemURL in contents.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
                     if let entry = fileEntry(itemURL) {
                         items.append(entry)
+                        if items.count >= maxListItems { break }
                     }
                 }
             } catch {
@@ -140,19 +150,12 @@ enum FilesBridge {
             }
         } catch {}
 
-        // Spotlight metadata via mdls
-        let process = Process()
-        let pipe = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/mdls")
-        process.arguments = ["-plist", "-", resolved]
-        process.standardOutput = pipe
-        process.standardError = Pipe()
-
-        do {
-            try process.run()
-            process.waitUntilExit()
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            if let plist = try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] {
+        if let result = runProcess(
+            executable: "/usr/bin/mdls",
+            arguments: ["-plist", "-", resolved]
+        ), result.status == 0 {
+            let data = result.stdout
+            if let plist = (try? PropertyListSerialization.propertyList(from: data, format: nil)) as? [String: Any] {
                 let mdKeys: [String: String] = [
                     "kMDItemContentType": "contentType",
                     "kMDItemKind": "kind",
@@ -174,7 +177,7 @@ enum FilesBridge {
                     info["spotlight"] = spotlight
                 }
             }
-        } catch {}
+        }
 
         JSONOutput.success(info)
     }
@@ -207,47 +210,40 @@ enum FilesBridge {
             }
         }
 
-        let process = Process()
-        let pipe = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/mdfind")
-        process.arguments = ["-onlyin", scopeDir, mdfindQuery]
-        process.standardOutput = pipe
-        process.standardError = Pipe()
-
-        do {
-            try process.run()
-            process.waitUntilExit()
-
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            guard let output = String(data: data, encoding: .utf8) else {
-                JSONOutput.success([Any]())
-                return
-            }
-
-            let paths = output.components(separatedBy: "\n").filter { !$0.isEmpty }
-            var results: [[String: Any]] = []
-
-            for path in paths.prefix(50) {
-                let url = URL(fileURLWithPath: path)
-                var entry: [String: Any] = [
-                    "path": path,
-                    "name": url.lastPathComponent,
-                ]
-                do {
-                    let values = try url.resourceValues(forKeys: [
-                        .fileSizeKey, .contentModificationDateKey, .contentTypeKey
-                    ])
-                    if let size = values.fileSize { entry["size"] = size }
-                    if let modified = values.contentModificationDate { entry["modified"] = iso8601(modified) }
-                    if let type = values.contentType { entry["type"] = type.identifier }
-                } catch {}
-                results.append(entry)
-            }
-
-            JSONOutput.success(results)
-        } catch {
-            JSONOutput.error("mdfind failed: \(error.localizedDescription)")
+        guard let result = runProcess(
+            executable: "/usr/bin/mdfind",
+            arguments: ["-onlyin", scopeDir, mdfindQuery]
+        ), result.status == 0 else {
+            JSONOutput.error("mdfind failed or exceeded \(Int(processTimeout))s timeout")
+            return
         }
+
+        guard let output = String(data: result.stdout, encoding: .utf8) else {
+            JSONOutput.success([Any]())
+            return
+        }
+
+        let paths = output.components(separatedBy: "\n").filter { !$0.isEmpty }
+        var results: [[String: Any]] = []
+
+        for path in paths.prefix(50) {
+            let url = URL(fileURLWithPath: path)
+            var entry: [String: Any] = [
+                "path": path,
+                "name": url.lastPathComponent,
+            ]
+            do {
+                let values = try url.resourceValues(forKeys: [
+                    .fileSizeKey, .contentModificationDateKey, .contentTypeKey
+                ])
+                if let size = values.fileSize { entry["size"] = size }
+                if let modified = values.contentModificationDate { entry["modified"] = iso8601(modified) }
+                if let type = values.contentType { entry["type"] = type.identifier }
+            } catch {}
+            results.append(entry)
+        }
+
+        JSONOutput.success(results)
     }
 
     // MARK: - Read (text extraction)
@@ -286,9 +282,17 @@ enum FilesBridge {
                 text = extractPDF(url: url)
                 method = "pdfkit"
             } else if ct.conforms(to: .image) {
+                if byteSize > maxOCRImageBytes {
+                    JSONOutput.error("Image is too large for OCR safety budget: \(byteSize) bytes (max \(maxOCRImageBytes)).")
+                    return
+                }
                 text = extractImageText(url: url)
                 method = "vision-ocr"
             } else {
+                if byteSize > maxTextutilBytes {
+                    JSONOutput.error("File is too large for textutil extraction safety budget: \(byteSize) bytes (max \(maxTextutilBytes)).")
+                    return
+                }
                 text = extractViaTextutil(path: resolved)
                 method = "textutil"
             }
@@ -297,6 +301,10 @@ enum FilesBridge {
             if text != nil {
                 method = "direct"
             } else {
+                if byteSize > maxTextutilBytes {
+                    JSONOutput.error("File is too large for textutil extraction safety budget: \(byteSize) bytes (max \(maxTextutilBytes)).")
+                    return
+                }
                 text = extractViaTextutil(path: resolved)
                 method = "textutil"
             }
@@ -327,10 +335,14 @@ enum FilesBridge {
     private static func extractPDF(url: URL) -> String? {
         guard let doc = PDFDocument(url: url) else { return nil }
         var text = ""
-        for i in 0..<doc.pageCount {
+        let pageLimit = min(doc.pageCount, maxPDFPages)
+        for i in 0..<pageLimit {
             if let page = doc.page(at: i), let pageText = page.string {
                 text += pageText + "\n"
             }
+        }
+        if doc.pageCount > maxPDFPages {
+            text += "\n[truncated after \(maxPDFPages) PDF pages out of \(doc.pageCount)]"
         }
         return text.isEmpty ? nil : text
     }
@@ -355,23 +367,47 @@ enum FilesBridge {
     }
 
     private static func extractViaTextutil(path: String) -> String? {
+        guard let result = runProcess(
+            executable: "/usr/bin/textutil",
+            arguments: ["-convert", "txt", "-stdout", path]
+        ), result.status == 0 else { return nil }
+        let text = String(data: result.stdout, encoding: .utf8)
+        return (text?.isEmpty == true) ? nil : text
+    }
+
+    private struct ProcessResult {
+        let status: Int32
+        let stdout: Data
+    }
+
+    private static func runProcess(executable: String, arguments: [String]) -> ProcessResult? {
         let process = Process()
         let pipe = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/textutil")
-        process.arguments = ["-convert", "txt", "-stdout", path]
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = arguments
         process.standardOutput = pipe
         process.standardError = Pipe()
 
         do {
             try process.run()
-            process.waitUntilExit()
-            guard process.terminationStatus == 0 else { return nil }
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            let text = String(data: data, encoding: .utf8)
-            return (text?.isEmpty == true) ? nil : text
         } catch {
             return nil
         }
+
+        let pid = process.processIdentifier
+        let watchdog = DispatchWorkItem {
+            guard process.isRunning else { return }
+            process.terminate()
+            DispatchQueue.global().asyncAfter(deadline: .now() + processSigkillGrace) {
+                if process.isRunning { kill(pid, SIGKILL) }
+            }
+        }
+        DispatchQueue.global().asyncAfter(deadline: .now() + processTimeout, execute: watchdog)
+        process.waitUntilExit()
+        watchdog.cancel()
+
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        return ProcessResult(status: process.terminationStatus, stdout: data)
     }
 
     // MARK: - File Operations

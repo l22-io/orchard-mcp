@@ -40,9 +40,15 @@ describe("BridgeOptions shape", () => {
     assert.equal(opts.timeoutMs, 120_000);
   });
 
+  it("accepts maxOutputBytes override", () => {
+    const opts: BridgeOptions = { maxOutputBytes: 1024 };
+    assert.equal(opts.maxOutputBytes, 1024);
+  });
+
   it("allows empty options (uses default timeout)", () => {
     const opts: BridgeOptions = {};
     assert.equal(opts.timeoutMs, undefined);
+    assert.equal(opts.maxOutputBytes, undefined);
   });
 });
 

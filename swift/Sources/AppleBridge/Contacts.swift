@@ -3,6 +3,7 @@ import Foundation
 
 enum ContactsBridge {
     private static let store = CNContactStore()
+    private static let maxPhoneSubstringContactsScanned = 5_000
 
     static func requestAccess() async -> Bool {
         await withCheckedContinuation { cont in
@@ -157,8 +158,14 @@ enum ContactsBridge {
         let request = CNContactFetchRequest(keysToFetch: defaultKeys)
         request.unifyResults = true
         var results: [CNContact] = []
+        var scanned = 0
         do {
-            try store.enumerateContacts(with: request) { contact, _ in
+            try store.enumerateContacts(with: request) { contact, stop in
+                scanned += 1
+                if scanned > maxPhoneSubstringContactsScanned {
+                    stop.pointee = true
+                    return
+                }
                 for phone in contact.phoneNumbers {
                     let phoneDigits = phone.value.stringValue.filter(\.isNumber)
                     if candidates.contains(where: { phoneDigits.contains($0) }) {

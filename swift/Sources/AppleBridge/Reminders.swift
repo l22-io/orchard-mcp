@@ -3,6 +3,7 @@ import Foundation
 
 enum RemindersBridge {
     private static let store = EKEventStore()
+    private static let maxReminderResults = 200
 
     static func requestAccess() async -> Bool {
         do {
@@ -110,7 +111,8 @@ enum RemindersBridge {
             filtered = allReminders.filter { !$0.isCompleted }
         }
 
-        let limited = Array(filtered.prefix(limit))
+        let safeLimit = min(max(limit, 1), maxReminderResults)
+        let limited = Array(filtered.prefix(safeLimit))
         let result: [[String: Any]] = limited.map { rem in
             formatReminder(rem)
         }
@@ -141,7 +143,7 @@ enum RemindersBridge {
             return due < endOfToday
         }
 
-        let result: [[String: Any]] = todayAndOverdue.map { rem in
+        let result: [[String: Any]] = todayAndOverdue.prefix(maxReminderResults).map { rem in
             formatReminder(rem)
         }
 
