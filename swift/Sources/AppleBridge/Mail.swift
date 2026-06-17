@@ -13,6 +13,7 @@ enum MailBridge {
         let script = """
         tell application "Mail"
             set resultList to {}
+            set mailboxLimit to 50
             repeat with acct in every account
                 set acctName to name of acct
                 try
@@ -20,32 +21,23 @@ enum MailBridge {
                 on error
                     set acctEmail to ""
                 end try
-                set mboxList to my listMailboxes(acct, "")
-                set end of resultList to acctName & "|||" & acctEmail & "|||" & (my joinList(mboxList, "^^^"))
+                set mboxList to {}
+                set mailboxCount to 0
+                try
+                    set childBoxes to every mailbox of acct
+                    set mailboxCount to count of childBoxes
+                    set maxItems to mailboxLimit
+                    if mailboxCount < maxItems then set maxItems to mailboxCount
+                    repeat with i from 1 to maxItems
+                        set mbox to item i of childBoxes
+                        set end of mboxList to name of mbox
+                    end repeat
+                end try
+                set wasTruncated to mailboxCount > mailboxLimit
+                set end of resultList to acctName & "|||" & acctEmail & "|||" & (my joinList(mboxList, "^^^")) & "|||" & (wasTruncated as string) & "|||" & (mailboxCount as string)
             end repeat
             return my joinList(resultList, "###")
         end tell
-
-        on listMailboxes(parentMbox, prefix)
-            set mboxList to {}
-            tell application "Mail"
-                set childBoxes to every mailbox of parentMbox
-                repeat with mbox in childBoxes
-                    set fullName to prefix & name of mbox
-                    set mboxUnread to unread count of mbox
-                    set end of mboxList to fullName & "::" & (mboxUnread as string)
-                end repeat
-            end tell
-            repeat with i from 1 to count of childBoxes
-                set mbox to item i of childBoxes
-                tell application "Mail"
-                    set mboxName to prefix & name of mbox
-                end tell
-                set subList to my listMailboxes(mbox, mboxName & "/")
-                set mboxList to mboxList & subList
-            end repeat
-            return mboxList
-        end listMailboxes
 
         on joinList(theList, delim)
             set oldDelim to AppleScript's text item delimiters
@@ -694,14 +686,20 @@ enum MailBridge {
             if parts.count > 2 && !parts[2].isEmpty {
                 let mboxStrings = parts[2].components(separatedBy: "^^^")
                 let mailboxes: [[String: Any]] = mboxStrings.compactMap { mboxStr in
-                    let fields = mboxStr.components(separatedBy: "::")
-                    guard fields.count >= 2 else { return nil }
+                    let name = mboxStr.trimmingCharacters(in: .whitespaces)
+                    guard !name.isEmpty else { return nil }
                     return [
-                        "name": fields[0].trimmingCharacters(in: .whitespaces),
-                        "unreadCount": Int(fields[1].trimmingCharacters(in: .whitespaces)) ?? 0
+                        "name": name,
+                        "unreadCountAvailable": false
                     ]
                 }
                 account["mailboxes"] = mailboxes
+            }
+            if parts.count > 3 {
+                account["mailboxesTruncated"] = parts[3].trimmingCharacters(in: .whitespacesAndNewlines) == "true"
+            }
+            if parts.count > 4 {
+                account["mailboxCount"] = Int(parts[4].trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
             }
 
             return account

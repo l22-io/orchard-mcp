@@ -15,7 +15,7 @@ orchard-mcp must protect the user's Mac first. A tool call is allowed to return 
 
 | Area | Host dependency | Guardrail |
 | --- | --- | --- |
-| Mail | Mail.app via AppleScript | `mail.save_attachment` requires account and mailbox locators. `mail.read_message` no longer scans every mailbox by default. Broad body/all-field all-account all-mailbox search is refused. |
+| Mail | Mail.app via AppleScript | `mail.save_attachment` requires account and mailbox locators. `mail.read_message` no longer scans every mailbox by default. `mail.list_accounts` returns bounded mailbox metadata without recursive unread counts. Broad body/all-field all-account all-mailbox search is refused. |
 | Notes | Notes via AppleScript | Notes search defaults to title-only. Body/all search is refused because it scans every note plaintext. |
 | Numbers | Numbers via AppleScript/JXA | `numbers.read` and `numbers.get_formulas` require an explicit cell range. Full-table reads are refused. |
 | Pages | Pages via AppleScript | Calls are serialized through the Pages lane and bounded by timeout/output budgets. Large writes/tables are capped by schema. |

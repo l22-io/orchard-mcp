@@ -6,7 +6,7 @@ import { OPERATION_PROFILES, safeBridgeData } from "../safety.js";
 export function registerMailTools(server: McpServer): void {
   server.tool(
     "mail.list_accounts",
-    "List all Apple Mail accounts with their mailboxes and unread counts. Requires Mail.app to be running.",
+    "List all Apple Mail accounts with a bounded sample of mailbox names. Per-mailbox unread counts are intentionally omitted so account listing does not recursively scan Mail.app; use mail.unread_summary for unread counts. Requires Mail.app to be running.",
     {},
     async () => {
       const data = await safeBridgeData(

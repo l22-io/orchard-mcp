@@ -128,7 +128,7 @@ Add to your MCP settings:
 
 ### Mail
 
-- `mail.list_accounts` - List all mail accounts with mailboxes and unread counts
+- `mail.list_accounts` - List mail accounts with a bounded mailbox-name sample; use `mail.unread_summary` for unread counts
 - `mail.unread_summary` - Unread count per account with recent message headers
 - `mail.search` - Search messages by subject, sender, body, or all fields with pagination
 - `mail.read_message` - Get message content by ID with configurable body truncation; pass account/mailbox locators when available

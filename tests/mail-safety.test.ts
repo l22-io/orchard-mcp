@@ -58,4 +58,12 @@ describe("mail locator safety", () => {
     assert.doesNotMatch(swiftFunctionBody("readMessage"), /repeat with acct in every account/);
     assert.doesNotMatch(swiftFunctionBody("saveAttachment"), /repeat with acct in every account/);
   });
+
+  it("keeps account listing bounded and metadata-only", () => {
+    const body = swiftFunctionBody("listAccounts");
+
+    assert.match(body, /set mailboxLimit to 50/);
+    assert.doesNotMatch(body, /on listMailboxes/);
+    assert.doesNotMatch(body, /unread count of mbox/);
+  });
 });
