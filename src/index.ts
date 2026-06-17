@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const packageJson = require("../package.json") as { version: string };
+
 // Handle `orchard-mcp setup` subcommand before starting MCP server.
 if (process.argv[2] === "setup") {
   const { runSetup } = await import("./setup.js");
@@ -22,7 +27,7 @@ import { registerContactsTools } from "./tools/contacts.js";
 
 const server = new McpServer({
   name: "orchard-mcp",
-  version: "0.5.0",
+  version: packageJson.version,
 });
 
 registerCalendarTools(server);

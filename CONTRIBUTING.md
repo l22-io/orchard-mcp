@@ -6,7 +6,7 @@ Thanks for your interest in contributing. This guide covers the development setu
 
 - macOS 14+ (Sonoma or later)
 - Swift 5.9+ (Xcode Command Line Tools)
-- Node.js 18+
+- Node.js 22+
 
 ## Development Setup
 
@@ -35,9 +35,9 @@ npm run lint           # Type-check without emitting
 Two-layer design:
 
 1. **TypeScript MCP server** (`src/`) -- handles MCP protocol, Zod schemas, tool routing
-2. **Swift CLI** (`swift/`) -- native binary using EventKit (Calendar/Reminders), AppleScript (Mail), FileManager/Spotlight/PDFKit (Files)
+2. **Swift CLI** (`swift/`) -- native binary using EventKit (Calendar/Reminders), Contacts.framework, FileManager/Spotlight/PDFKit/Vision (Files), and AppleScript/JXA (Mail, Notes, Numbers, Pages, Keynote)
 
-The TypeScript layer calls the Swift binary via `child_process.execFile` and parses JSON responses. All Swift subcommands return a `{"status": "ok"|"error", "data": ..., "error": ...}` envelope.
+The TypeScript layer spawns the Swift binary via `child_process.spawn` and parses JSON responses. All Swift subcommands return a `{"status": "ok"|"error", "data": ..., "error": ...}` envelope.
 
 ## Testing
 
@@ -45,7 +45,7 @@ The TypeScript layer calls the Swift binary via `child_process.execFile` and par
 npm test
 ```
 
-Tests cover tool registration (all 28 tools) and bridge JSON contract validation. Manual testing on macOS is required for end-to-end verification since EventKit and AppleScript access real system data.
+Tests cover tool registration (all 65 tools), metadata drift, bridge JSON contract validation, and focused argument/guard logic. Manual testing on macOS is required for end-to-end verification since EventKit, Contacts, AppleScript, JXA, and TCC permissions access real system data.
 
 ### macOS Sequoia TCC Note
 

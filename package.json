@@ -1,7 +1,7 @@
 {
   "name": "@l22-io/orchard-mcp",
   "version": "0.6.3",
-  "description": "MCP server for Apple Calendar, Mail, Reminders, and Files on macOS using native EventKit",
+  "description": "MCP server for local macOS apps and files using native frameworks",
   "publishConfig": {
     "access": "public"
   },

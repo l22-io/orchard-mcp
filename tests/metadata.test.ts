@@ -1,0 +1,123 @@
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import { existsSync, readFileSync } from "node:fs";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerCalendarTools } from "../src/tools/calendar.js";
+import { registerContactsTools } from "../src/tools/contacts.js";
+import { registerFileTools } from "../src/tools/files.js";
+import { registerKeynoteTools } from "../src/tools/keynote.js";
+import { registerMailTools } from "../src/tools/mail.js";
+import { registerNotesTools } from "../src/tools/notes.js";
+import { registerNumbersTools } from "../src/tools/numbers.js";
+import { registerPagesTools } from "../src/tools/pages.js";
+import { registerReminderTools } from "../src/tools/reminders.js";
+import { registerSystemTools } from "../src/tools/system.js";
+
+const repoRoot = new URL("../", import.meta.url);
+
+function readRepoFile(path: string): string {
+  return readFileSync(new URL(path, repoRoot), "utf8");
+}
+
+const packageJson = JSON.parse(readRepoFile("package.json")) as {
+  version: string;
+  engines: { node: string };
+  description: string;
+};
+
+function registeredToolCount(): number {
+  const server = new McpServer({ name: "orchard-mcp", version: packageJson.version });
+  registerCalendarTools(server);
+  registerMailTools(server);
+  registerReminderTools(server);
+  registerSystemTools(server);
+  registerFileTools(server);
+  registerNumbersTools(server);
+  registerPagesTools(server);
+  registerKeynoteTools(server);
+  registerNotesTools(server);
+  registerContactsTools(server);
+  return Object.keys((server as any)._registeredTools as Record<string, unknown>).length;
+}
+
+describe("metadata stays in sync", () => {
+  it("keeps package-lock root metadata aligned with package.json", () => {
+    const packageLock = JSON.parse(readRepoFile("package-lock.json")) as {
+      version: string;
+      packages: { "": { version: string } };
+    };
+    assert.equal(packageLock.version, packageJson.version);
+    assert.equal(packageLock.packages[""].version, packageJson.version);
+  });
+
+  it("uses package.json as the TypeScript server version source", () => {
+    const index = readRepoFile("src/index.ts");
+    assert.match(index, /version:\s*packageJson\.version/);
+    assert.doesNotMatch(index, /version:\s*["']\d+\.\d+\.\d+["']/);
+  });
+
+  it("keeps Swift bridge versions aligned with package.json", () => {
+    const appleBridge = readRepoFile("swift/Sources/AppleBridge/AppleBridge.swift");
+    const doctor = readRepoFile("swift/Sources/AppleBridge/Doctor.swift");
+    assert.match(appleBridge, new RegExp(`version: "${packageJson.version}"`));
+    assert.match(doctor, new RegExp(`"version": "${packageJson.version}"`));
+  });
+
+  it("does not keep stale package snapshots in the repo", () => {
+    assert.equal(
+      existsSync(new URL("package/package.json", repoRoot)),
+      false,
+      "remove generated package snapshots instead of maintaining duplicate package metadata"
+    );
+  });
+
+  it("keeps docs aligned with the supported Node.js floor", () => {
+    const supportedNode = packageJson.engines.node.replace(">=", "");
+    for (const path of ["README.md", "CONTRIBUTING.md", "CLAUDE.md"]) {
+      const doc = readRepoFile(path);
+      assert.match(doc, new RegExp(`Node\\.js ${supportedNode.replace(/\..*$/, "")}\\+`), path);
+      assert.doesNotMatch(doc, /Node\.js 18\+/, path);
+    }
+  });
+
+  it("keeps live docs aligned with the current tool surface", () => {
+    const count = registeredToolCount();
+    const readme = readRepoFile("README.md");
+    const contributing = readRepoFile("CONTRIBUTING.md");
+    const claude = readRepoFile("CLAUDE.md");
+
+    for (const heading of ["Numbers", "Pages", "Keynote", "Notes", "Contacts"]) {
+      assert.match(readme, new RegExp(`### ${heading}`));
+    }
+
+    assert.match(contributing, new RegExp(`all ${count} tools`));
+    assert.match(claude, new RegExp(`${count} tools total`));
+    assert.match(claude, /registers tools from 10 modules/);
+    assert.doesNotMatch(claude, /registers tools from 8 modules/);
+    assert.match(claude, /notes\.\*/);
+    assert.match(claude, /contacts\.\*/);
+  });
+
+  it("removes stale live-documentation references", () => {
+    const readme = readRepoFile("README.md");
+    const contributing = readRepoFile("CONTRIBUTING.md");
+
+    assert.doesNotMatch(packageJson.description, /Calendar, Mail, Reminders, and Files/);
+    assert.doesNotMatch(readme, /docs\/PRD\.md/);
+    assert.doesNotMatch(readme, /child_process\.execFile/);
+    assert.doesNotMatch(contributing, /child_process\.execFile/);
+  });
+
+  it("documents every explicit Swift CLI subcommand", () => {
+    const readme = readRepoFile("README.md");
+    const appleBridge = readRepoFile("swift/Sources/AppleBridge/AppleBridge.swift");
+    const commandNames = [
+      ...appleBridge.matchAll(/commandName:\s*"([^"]+)"/g),
+    ].map((match) => match[1]);
+
+    for (const commandName of commandNames) {
+      if (commandName === "apple-bridge") continue;
+      assert.match(readme, new RegExp(`apple-bridge ${commandName}\\b`), commandName);
+    }
+  });
+});

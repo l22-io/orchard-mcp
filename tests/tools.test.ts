@@ -1,5 +1,6 @@
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerCalendarTools } from "../src/tools/calendar.js";
 import { registerMailTools } from "../src/tools/mail.js";
@@ -11,6 +12,10 @@ import { registerPagesTools } from "../src/tools/pages.js";
 import { registerKeynoteTools } from "../src/tools/keynote.js";
 import { registerNotesTools } from "../src/tools/notes.js";
 import { registerContactsTools } from "../src/tools/contacts.js";
+
+const packageJson = JSON.parse(
+  readFileSync(new URL("../package.json", import.meta.url), "utf8")
+) as { version: string };
 
 const EXPECTED_TOOLS = [
   // Calendar (4)
@@ -94,7 +99,7 @@ describe("tool registration", () => {
   let server: McpServer;
 
   before(() => {
-    server = new McpServer({ name: "orchard-mcp", version: "0.3.0" });
+    server = new McpServer({ name: "orchard-mcp", version: packageJson.version });
     registerCalendarTools(server);
     registerMailTools(server);
     registerReminderTools(server);

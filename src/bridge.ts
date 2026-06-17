@@ -6,8 +6,7 @@ import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 
 // Reason: Resolve the Swift binary path relative to this file's location.
-// In development: swift/.build/release/apple-bridge
-// In npm package: swift/.build/release/apple-bridge (shipped alongside)
+// In development and npm package installs, use the signed .app bundle copy.
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Emit a one-time warning when binary path overrides are active: these env
