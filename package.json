@@ -22,7 +22,7 @@
     "build:ts": "tsc && chmod 755 build/index.js",
     "build:swift": "cd swift && swift build -c release -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __info_plist -Xlinker Sources/AppleBridge/Info.plist && mkdir -p .build/AppleBridge.app/Contents/MacOS && cp .build/release/apple-bridge .build/AppleBridge.app/Contents/MacOS/apple-bridge && cp Sources/AppleBridge/Info.plist .build/AppleBridge.app/Contents/Info.plist && codesign --force --sign - .build/AppleBridge.app",
     "postinstall": "bash scripts/postinstall.sh",
-    "prepublishOnly": "npm run build:ts && bash scripts/prepublish.sh",
+    "prepublishOnly": "bash scripts/prepublish-guard.sh && npm run build:ts && bash scripts/prepublish.sh",
     "dev": "tsc --watch",
     "start": "node build/index.js",
     "test": "tsx --test tests/*.test.ts",
