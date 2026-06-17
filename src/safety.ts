@@ -22,6 +22,7 @@ interface LaneState {
 
 const DEFAULT_OUTPUT_BYTES = 2 * 1024 * 1024;
 const LARGE_OUTPUT_BYTES = 8 * 1024 * 1024;
+const BRIDGE_TIMEOUT_ATTEMPTS = 2;
 
 const laneStates = new Map<string, LaneState>();
 
@@ -134,7 +135,15 @@ export async function safeBridgeData(
     timeoutMs: profile.timeoutMs,
     maxOutputBytes: profile.maxOutputBytes,
   };
-  return runWithOperationProfile(profile, () => bridgeData(args, options));
+  return runWithOperationProfile(
+    {
+      ...profile,
+      // callBridge() may spend one full timeout on the direct process and then
+      // retry the same request through the .app bundle for TCC-gated services.
+      timeoutMs: profile.timeoutMs * BRIDGE_TIMEOUT_ATTEMPTS,
+    },
+    () => bridgeData(args, options)
+  );
 }
 
 export async function runWithOperationProfile<T>(
