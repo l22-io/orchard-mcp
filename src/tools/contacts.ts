@@ -1,8 +1,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { OrchardConfig } from "../config.js";
 import { OPERATION_PROFILES, safeBridgeData } from "../safety.js";
 
-export function registerContactsTools(server: McpServer): void {
+export function registerContactsTools(server: McpServer, _config: OrchardConfig): void {
   server.tool(
     "contacts.list_groups",
     "List all contact groups with member counts. Requires Contacts access.",

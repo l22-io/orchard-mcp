@@ -1,9 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { normalizeNotesSearchIn } from "../resourceGuards.js";
+import { OrchardConfig } from "../config.js";
 import { OPERATION_PROFILES, safeBridgeData } from "../safety.js";
 
-export function registerNotesTools(server: McpServer): void {
+export function registerNotesTools(server: McpServer, _config: OrchardConfig): void {
   server.tool(
     "notes.list_folders",
     "List all Notes folders grouped by account with note counts. Requires Notes.app to be running and Automation permission.",

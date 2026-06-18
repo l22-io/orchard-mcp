@@ -1,9 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { appendMailLocatorArgs, requireMailLocator } from "../mailSafety.js";
+import { OrchardConfig } from "../config.js";
 import { OPERATION_PROFILES, safeBridgeData } from "../safety.js";
 
-export function registerMailTools(server: McpServer): void {
+export function registerMailTools(server: McpServer, _config: OrchardConfig): void {
   server.tool(
     "mail.list_accounts",
     "List all Apple Mail accounts with a bounded sample of mailbox names. Per-mailbox unread counts are intentionally omitted so account listing does not recursively scan Mail.app; use mail.unread_summary for unread counts. Requires Mail.app to be running.",

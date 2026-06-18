@@ -1,11 +1,25 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import {
+  filterCalendarEvents,
+  isCalendarRangeFullyBeforeCutoff,
+} from "../ageFilters.js";
+import { OrchardConfig } from "../config.js";
 import { assertIsoDateRangeWithinDays } from "../resourceGuards.js";
 import { OPERATION_PROFILES, safeBridgeData } from "../safety.js";
 
 const MAX_CALENDAR_RANGE_DAYS = 31;
 
-export function registerCalendarTools(server: McpServer): void {
+function formatEventsResponse(
+  data: unknown,
+  calendarMaxAgeDays: number | undefined
+): string {
+  const events = Array.isArray(data) ? data : [];
+  const filtered = filterCalendarEvents(events, calendarMaxAgeDays);
+  return JSON.stringify(filtered, null, 2);
+}
+
+export function registerCalendarTools(server: McpServer, config: OrchardConfig): void {
   server.tool(
     "calendar.list_calendars",
     "List all Apple Calendar calendars with account name, type, color, and read-only status.",
@@ -40,13 +54,23 @@ export function registerCalendarTools(server: McpServer): void {
         MAX_CALENDAR_RANGE_DAYS,
         "calendar.list_events"
       );
+      if (isCalendarRangeFullyBeforeCutoff(start, end, config.calendarMaxAgeDays)) {
+        return {
+          content: [{ type: "text", text: JSON.stringify([], null, 2) }],
+        };
+      }
       const args = ["events", "--start", start, "--end", end];
       if (calendarId) {
         args.push("--calendar", calendarId);
       }
       const data = await safeBridgeData(args, OPERATION_PROFILES.calendarRead);
       return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+        content: [
+          {
+            type: "text",
+            text: formatEventsResponse(data, config.calendarMaxAgeDays),
+          },
+        ],
       };
     }
   );
@@ -76,7 +100,12 @@ export function registerCalendarTools(server: McpServer): void {
         OPERATION_PROFILES.calendarRead
       );
       return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+        content: [
+          {
+            type: "text",
+            text: formatEventsResponse(data, config.calendarMaxAgeDays),
+          },
+        ],
       };
     }
   );
@@ -96,6 +125,11 @@ export function registerCalendarTools(server: McpServer): void {
         MAX_CALENDAR_RANGE_DAYS,
         "calendar.search"
       );
+      if (isCalendarRangeFullyBeforeCutoff(start, end, config.calendarMaxAgeDays)) {
+        return {
+          content: [{ type: "text", text: JSON.stringify([], null, 2) }],
+        };
+      }
       const data = await safeBridgeData([
         "search",
         query,
@@ -105,7 +139,12 @@ export function registerCalendarTools(server: McpServer): void {
         end,
       ], OPERATION_PROFILES.calendarRead);
       return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+        content: [
+          {
+            type: "text",
+            text: formatEventsResponse(data, config.calendarMaxAgeDays),
+          },
+        ],
       };
     }
   );
