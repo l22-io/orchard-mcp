@@ -50,7 +50,7 @@ Calendars"), triggered automatically on first use or during setup.
 
 ## Status
 
-Current release: 65 tools across Calendar, Mail, Reminders, Files, System, Numbers,
+Current release: 66 tools across Calendar, Mail, Reminders, Files, System, Numbers,
 Pages, Keynote, Notes, and Contacts. See [CHANGELOG.md](CHANGELOG.md) for release
 history.
 
@@ -119,7 +119,7 @@ Add to your MCP settings:
 
 ## Configuration
 
-By default, orchard-mcp exposes all 65 tools. You can restrict which modules are enabled
+By default, orchard-mcp exposes all 66 tools. You can restrict which modules are enabled
 and optionally limit how far back calendar events and completed reminders are returned.
 
 ### Config file
@@ -185,6 +185,7 @@ Valid module names: `calendar`, `mail`, `reminders`, `files`, `system`, `numbers
 - `calendar.list_events` - Events in a date range (recurring events expanded)
 - `calendar.today` - Today's events across all calendars
 - `calendar.search` - Search events by title, notes, or location
+- `calendar.create_event` - Create a new calendar event
 
 ### Mail
 
@@ -295,6 +296,7 @@ attached to the app bundle. Direct binary execution is still available through
 apple-bridge calendars
 apple-bridge events
 apple-bridge search
+apple-bridge event-create
 apple-bridge mail-accounts
 apple-bridge mail-unread
 apple-bridge mail-search

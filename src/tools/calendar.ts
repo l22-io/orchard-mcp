@@ -148,4 +148,51 @@ export function registerCalendarTools(server: McpServer, config: OrchardConfig):
       };
     }
   );
+
+  server.tool(
+    "calendar.create_event",
+    "Create a new calendar event. Use calendar.list_calendars to find a writable calendar ID.",
+    {
+      title: z.string().describe("Event title"),
+      start: z
+        .string()
+        .describe("Start date in ISO 8601 format (e.g. 2026-02-17 or 2026-02-17T10:00:00Z)"),
+      end: z
+        .string()
+        .describe("End date in ISO 8601 format; must be on or after start"),
+      calendarId: z
+        .string()
+        .optional()
+        .describe("Optional calendar ID (from calendar.list_calendars); defaults to system default"),
+      isAllDay: z
+        .boolean()
+        .optional()
+        .describe("Create as an all-day event (default: false)"),
+      location: z.string().optional().describe("Event location"),
+      notes: z.string().optional().describe("Event notes"),
+      url: z.string().optional().describe("Event URL"),
+    },
+    async ({ title, start, end, calendarId, isAllDay, location, notes, url }) => {
+      const args = ["event-create", "--title", title, "--start", start, "--end", end];
+      if (calendarId) {
+        args.push("--calendar", calendarId);
+      }
+      if (isAllDay) {
+        args.push("--all-day");
+      }
+      if (location) {
+        args.push("--location", location);
+      }
+      if (notes) {
+        args.push("--notes", notes);
+      }
+      if (url) {
+        args.push("--url", url);
+      }
+      const data = await safeBridgeData(args, OPERATION_PROFILES.calendarWrite);
+      return {
+        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+      };
+    }
+  );
 }

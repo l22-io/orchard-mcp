@@ -31,7 +31,7 @@ MCP Client (stdio JSON-RPC) -> TypeScript Server (Node.js) -> Swift CLI (apple-b
 
 **Bridge layer:** `src/bridge.ts` executes the Swift binary, parses the `{status, data, error}` JSON envelope, and automatically retries via the `.app` bundle on "access denied" errors required for some macOS TCC permissions. `bridgeData(args)` is the convenience wrapper that throws on error.
 
-**Tool modules:** `src/tools/*.ts` each export a `register*Tools(server, config)` function. Tools use `server.tool(name, description, zodSchema, asyncHandler)`. Tool names are namespaced: `calendar.*`, `mail.*`, `reminders.*`, `files.*`, `system.*`, `numbers.*`, `pages.*`, `keynote.*`, `notes.*`, `contacts.*`. 65 tools total when all modules are enabled.
+**Tool modules:** `src/tools/*.ts` each export a `register*Tools(server, config)` function. Tools use `server.tool(name, description, zodSchema, asyncHandler)`. Tool names are namespaced: `calendar.*`, `mail.*`, `reminders.*`, `files.*`, `system.*`, `numbers.*`, `pages.*`, `keynote.*`, `notes.*`, `contacts.*`. 66 tools total when all modules are enabled.
 
 **App Safety:** Tool modules must call `safeBridgeData(args, OPERATION_PROFILES.<profile>)` from `src/safety.ts`, not `bridgeData` directly. The safety layer serializes host-app lanes, applies queue/time/output budgets, and refuses broad requests before they can make Mail.app or other apps unresponsive. Keep [docs/app-safety-audit.md](docs/app-safety-audit.md) current when changing tool scope, timeouts, result limits, or app automation.
 

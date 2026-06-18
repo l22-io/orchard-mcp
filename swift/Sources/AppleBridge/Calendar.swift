@@ -181,7 +181,130 @@ enum CalendarBridge {
         JSONOutput.success(result)
     }
 
+    /// Create a new calendar event.
+    static func createEvent(
+        title: String,
+        startISO: String,
+        endISO: String,
+        calendarID: String?,
+        isAllDay: Bool,
+        location: String?,
+        notes: String?,
+        url: String?
+    ) async {
+        guard await requestAccess() else {
+            JSONOutput.error("Calendar access denied. Grant access in System Settings > Privacy & Security > Calendars.")
+            return
+        }
+
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else {
+            JSONOutput.error("Event title is required.")
+            return
+        }
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        guard var startDate = formatter.date(from: startISO) ?? parseFlexibleISO(startISO) else {
+            JSONOutput.error("Invalid start date: \(startISO). Use ISO 8601 format.")
+            return
+        }
+        guard var endDate = formatter.date(from: endISO) ?? parseFlexibleISO(endISO) else {
+            JSONOutput.error("Invalid end date: \(endISO). Use ISO 8601 format.")
+            return
+        }
+        guard endDate >= startDate else {
+            JSONOutput.error("event-create requires end date to be on or after start date.")
+            return
+        }
+
+        let calendar: EKCalendar
+        if let calID = calendarID {
+            guard let resolved = store.calendar(withIdentifier: calID) else {
+                JSONOutput.error("Calendar not found: \(calID)")
+                return
+            }
+            calendar = resolved
+        } else if let defaultCalendar = store.defaultCalendarForNewEvents {
+            calendar = defaultCalendar
+        } else {
+            JSONOutput.error("No default calendar available for new events.")
+            return
+        }
+
+        guard calendar.allowsContentModifications else {
+            JSONOutput.error("Calendar '\(calendar.title)' is read-only.")
+            return
+        }
+
+        if let urlStr = url, !urlStr.isEmpty {
+            guard URL(string: urlStr) != nil else {
+                JSONOutput.error("Invalid URL: \(urlStr)")
+                return
+            }
+        }
+
+        if isAllDay {
+            let cal = Calendar.current
+            startDate = cal.startOfDay(for: startDate)
+            let endStartOfDay = cal.startOfDay(for: endDate)
+            if endStartOfDay <= startDate {
+                endDate = cal.date(byAdding: .day, value: 1, to: startDate) ?? endDate
+            } else {
+                // Reason: EventKit uses an exclusive end date for all-day events.
+                endDate = cal.date(byAdding: .day, value: 1, to: endStartOfDay) ?? endDate
+            }
+        }
+
+        let event = EKEvent(eventStore: store)
+        event.title = trimmedTitle
+        event.startDate = startDate
+        event.endDate = endDate
+        event.isAllDay = isAllDay
+        event.calendar = calendar
+
+        if let location = location, !location.isEmpty {
+            event.location = location
+        }
+        if let notes = notes, !notes.isEmpty {
+            event.notes = notes
+        }
+        if let urlStr = url, !urlStr.isEmpty, let parsedURL = URL(string: urlStr) {
+            event.url = parsedURL
+        }
+
+        do {
+            try store.save(event, span: .thisEvent, commit: true)
+            JSONOutput.success(formatEvent(event))
+        } catch {
+            JSONOutput.error("Failed to create event: \(error.localizedDescription)")
+        }
+    }
+
     // MARK: - Helpers
+
+    private static func formatEvent(_ evt: EKEvent) -> [String: Any] {
+        var dict: [String: Any] = [
+            "id": evt.eventIdentifier ?? "",
+            "title": evt.title ?? "(no title)",
+            "start": iso8601(evt.startDate),
+            "end": iso8601(evt.endDate),
+            "isAllDay": evt.isAllDay,
+            "calendar": evt.calendar.title,
+            "calendarId": evt.calendar.calendarIdentifier
+        ]
+        if let location = evt.location, !location.isEmpty {
+            dict["location"] = location
+        }
+        if let notes = evt.notes, !notes.isEmpty {
+            dict["notes"] = notes
+        }
+        if let url = evt.url {
+            dict["url"] = url.absoluteString
+        }
+        return dict
+    }
 
     private static func parseFlexibleISO(_ str: String) -> Date? {
         // Reason: Accept date-only strings like "2026-02-17" without time component.

@@ -34,6 +34,13 @@ export const OPERATION_PROFILES = {
     queueTimeoutMs: 1_000,
     maxOutputBytes: DEFAULT_OUTPUT_BYTES,
   },
+  calendarWrite: {
+    name: "calendar.write",
+    lane: "calendar",
+    timeoutMs: 20_000,
+    queueTimeoutMs: 1_000,
+    maxOutputBytes: DEFAULT_OUTPUT_BYTES,
+  },
   contactsRead: {
     name: "contacts.read",
     lane: "contacts",

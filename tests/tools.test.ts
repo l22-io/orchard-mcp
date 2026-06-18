@@ -14,11 +14,12 @@ const DEFAULT_CONFIG: OrchardConfig = {
 };
 
 const EXPECTED_TOOLS = [
-  // Calendar (4)
+  // Calendar (5)
   "calendar.list_calendars",
   "calendar.list_events",
   "calendar.today",
   "calendar.search",
+  "calendar.create_event",
   // Mail (7)
   "mail.list_accounts",
   "mail.unread_summary",
@@ -104,9 +105,9 @@ describe("tool registration", () => {
     registerEnabledTools(server, DEFAULT_CONFIG);
   });
 
-  it("registers exactly 65 tools", () => {
+  it("registers exactly 66 tools", () => {
     const names = registeredToolNames(server);
-    assert.equal(names.length, 65, `Expected 65 tools, got ${names.length}: ${names.join(", ")}`);
+    assert.equal(names.length, 66, `Expected 66 tools, got ${names.length}: ${names.join(", ")}`);
   });
 
   for (const name of EXPECTED_TOOLS) {
@@ -126,7 +127,7 @@ describe("tool registration", () => {
     });
 
     const names = registeredToolNames(restrictedServer);
-    assert.equal(names.length, 5);
+    assert.equal(names.length, 6);
     assert.ok(names.every((name) => name.startsWith("calendar.") || name.startsWith("system.")));
     assert.ok(!names.some((name) => name.startsWith("mail.")));
   });
