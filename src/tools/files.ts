@@ -1,9 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { assertBatchSize } from "../resourceGuards.js";
+import { OrchardConfig } from "../config.js";
 import { OPERATION_PROFILES, safeBridgeData } from "../safety.js";
 
-export function registerFileTools(server: McpServer): void {
+export function registerFileTools(server: McpServer, _config: OrchardConfig): void {
   server.tool(
     "files.list",
     "List directory contents with metadata (name, size, dates, type). Paths relative to home directory.",

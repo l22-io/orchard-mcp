@@ -25,11 +25,13 @@ npm start              # Run the MCP server
 MCP Client (stdio JSON-RPC) -> TypeScript Server (Node.js) -> Swift CLI (apple-bridge) -> macOS Frameworks
 ```
 
-**Entry point:** `src/index.ts` creates `McpServer`, registers tools from 10 modules, connects `StdioServerTransport`, and handles the `orchard-mcp setup` subcommand before server startup.
+**Entry point:** `src/index.ts` loads config, registers tools from 10 modules via `src/registerTools.ts` (all enabled by default), connects `StdioServerTransport`, and handles the `orchard-mcp setup` subcommand before server startup.
+
+**Configuration:** `src/config.ts` reads optional `~/.config/orchard-mcp/config.json` (override with `ORCHARD_MCP_CONFIG`) and environment variables (`ORCHARD_MCP_MODULES`, `ORCHARD_MCP_CALENDAR_MAX_AGE_DAYS`, `ORCHARD_MCP_REMINDERS_MAX_AGE_DAYS`). Disabled modules are not registered. Calendar and reminder read tools apply optional age filters via `src/ageFilters.ts`.
 
 **Bridge layer:** `src/bridge.ts` executes the Swift binary, parses the `{status, data, error}` JSON envelope, and automatically retries via the `.app` bundle on "access denied" errors required for some macOS TCC permissions. `bridgeData(args)` is the convenience wrapper that throws on error.
 
-**Tool modules:** `src/tools/*.ts` each exports a `register*Tools(server)` function. Tools use `server.tool(name, description, zodSchema, asyncHandler)`. Tool names are namespaced: `calendar.*`, `mail.*`, `reminders.*`, `files.*`, `system.*`, `numbers.*`, `pages.*`, `keynote.*`, `notes.*`, `contacts.*`. 65 tools total.
+**Tool modules:** `src/tools/*.ts` each export a `register*Tools(server, config)` function. Tools use `server.tool(name, description, zodSchema, asyncHandler)`. Tool names are namespaced: `calendar.*`, `mail.*`, `reminders.*`, `files.*`, `system.*`, `numbers.*`, `pages.*`, `keynote.*`, `notes.*`, `contacts.*`. 66 tools total when all modules are enabled.
 
 **App Safety:** Tool modules must call `safeBridgeData(args, OPERATION_PROFILES.<profile>)` from `src/safety.ts`, not `bridgeData` directly. The safety layer serializes host-app lanes, applies queue/time/output budgets, and refuses broad requests before they can make Mail.app or other apps unresponsive. Keep [docs/app-safety-audit.md](docs/app-safety-audit.md) current when changing tool scope, timeouts, result limits, or app automation.
 
@@ -47,7 +49,7 @@ MCP Client (stdio JSON-RPC) -> TypeScript Server (Node.js) -> Swift CLI (apple-b
 - iWork tools (Numbers, Pages, Keynote) use AppleScript for document operations; Numbers bulk cell ops use JXA for native JSON
 - iWork file paths are validated via `FilesBridge.validatePath()` and must be under `~/`
 - Export subcommands use `--dest`, not `--output`, because `--output` is reserved for `.app` bundle mode JSON redirection
-- Environment overrides: `APPLE_BRIDGE_BIN`, `APPLE_BRIDGE_APP`
+- Environment overrides: `APPLE_BRIDGE_BIN`, `APPLE_BRIDGE_APP`, `ORCHARD_MCP_CONFIG`, `ORCHARD_MCP_MODULES`, `ORCHARD_MCP_CALENDAR_MAX_AGE_DAYS`, `ORCHARD_MCP_REMINDERS_MAX_AGE_DAYS`
 
 ## Requirements
 

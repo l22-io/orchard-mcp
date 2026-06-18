@@ -2,16 +2,8 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { registerCalendarTools } from "../src/tools/calendar.js";
-import { registerContactsTools } from "../src/tools/contacts.js";
-import { registerFileTools } from "../src/tools/files.js";
-import { registerKeynoteTools } from "../src/tools/keynote.js";
-import { registerMailTools } from "../src/tools/mail.js";
-import { registerNotesTools } from "../src/tools/notes.js";
-import { registerNumbersTools } from "../src/tools/numbers.js";
-import { registerPagesTools } from "../src/tools/pages.js";
-import { registerReminderTools } from "../src/tools/reminders.js";
-import { registerSystemTools } from "../src/tools/system.js";
+import { ALL_MODULES } from "../src/config.js";
+import { registerEnabledTools } from "../src/registerTools.js";
 
 const repoRoot = new URL("../", import.meta.url);
 
@@ -27,16 +19,7 @@ const packageJson = JSON.parse(readRepoFile("package.json")) as {
 
 function registeredToolCount(): number {
   const server = new McpServer({ name: "orchard-mcp", version: packageJson.version });
-  registerCalendarTools(server);
-  registerMailTools(server);
-  registerReminderTools(server);
-  registerSystemTools(server);
-  registerFileTools(server);
-  registerNumbersTools(server);
-  registerPagesTools(server);
-  registerKeynoteTools(server);
-  registerNotesTools(server);
-  registerContactsTools(server);
+  registerEnabledTools(server, { enabledModules: ALL_MODULES });
   return Object.keys((server as any)._registeredTools as Record<string, unknown>).length;
 }
 

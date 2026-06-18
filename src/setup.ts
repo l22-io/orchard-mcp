@@ -321,6 +321,9 @@ async function printClientConfig(total: number): Promise<void> {
     log(`  Command: node`);
     log(`  Args: ${serverPath}`);
   }
+
+  log("Optional server config: ~/.config/orchard-mcp/config.json");
+  log("  Restrict modules or set calendar/reminder age limits (see README).");
 }
 
 // Step 6: Validation

@@ -1,9 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { requireKeynoteSlideForImageExport } from "../resourceGuards.js";
+import { OrchardConfig } from "../config.js";
 import { OPERATION_PROFILES, safeBridgeData } from "../safety.js";
 
-export function registerKeynoteTools(server: McpServer): void {
+export function registerKeynoteTools(server: McpServer, _config: OrchardConfig): void {
   server.tool(
     "keynote.search",
     "Search for Keynote presentation files by name.",

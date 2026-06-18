@@ -38,6 +38,7 @@ struct AppleBridge: AsyncParsableCommand {
             Calendars.self,
             Events.self,
             Search.self,
+            EventCreate.self,
             MailAccounts.self,
             MailUnread.self,
             MailSearchCmd.self,
@@ -155,6 +156,50 @@ struct Search: AsyncParsableCommand {
 
     func run() async throws {
         await CalendarBridge.searchEvents(query: query, startISO: start, endISO: end)
+    }
+}
+
+struct EventCreate: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "event-create",
+        abstract: "Create a new calendar event."
+    )
+
+    @Option(name: .long, help: "Event title")
+    var title: String
+
+    @Option(name: .long, help: "Start date (ISO 8601, e.g. 2026-02-17 or 2026-02-17T00:00:00Z)")
+    var start: String
+
+    @Option(name: .long, help: "End date (ISO 8601)")
+    var end: String
+
+    @Option(name: .long, help: "Calendar ID (from 'calendars' subcommand)")
+    var calendar: String?
+
+    @Flag(name: .long, help: "Create as an all-day event")
+    var allDay: Bool = false
+
+    @Option(name: .long, help: "Event location")
+    var location: String?
+
+    @Option(name: .long, help: "Event notes")
+    var notes: String?
+
+    @Option(name: .long, help: "Event URL")
+    var url: String?
+
+    func run() async throws {
+        await CalendarBridge.createEvent(
+            title: title,
+            startISO: start,
+            endISO: end,
+            calendarID: calendar,
+            isAllDay: allDay,
+            location: location,
+            notes: notes,
+            url: url
+        )
     }
 }
 

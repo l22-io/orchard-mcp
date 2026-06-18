@@ -45,7 +45,7 @@ The TypeScript layer spawns the Swift binary via `child_process.spawn` and parse
 npm test
 ```
 
-Tests cover tool registration (all 65 tools), metadata drift, bridge JSON contract validation, and focused argument/guard logic. Manual testing on macOS is required for end-to-end verification since EventKit, Contacts, AppleScript, JXA, and TCC permissions access real system data.
+Tests cover tool registration (all 66 tools), metadata drift, bridge JSON contract validation, and focused argument/guard logic. Manual testing on macOS is required for end-to-end verification since EventKit, Contacts, AppleScript, JXA, and TCC permissions access real system data.
 
 ### macOS Sequoia TCC Note
 
