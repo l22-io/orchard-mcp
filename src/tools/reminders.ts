@@ -1,8 +1,19 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { filterReminders } from "../ageFilters.js";
+import { OrchardConfig } from "../config.js";
 import { OPERATION_PROFILES, safeBridgeData } from "../safety.js";
 
-export function registerReminderTools(server: McpServer): void {
+function formatRemindersResponse(
+  data: unknown,
+  remindersMaxAgeDays: number | undefined
+): string {
+  const reminders = Array.isArray(data) ? data : [];
+  const filtered = filterReminders(reminders, remindersMaxAgeDays);
+  return JSON.stringify(filtered, null, 2);
+}
+
+export function registerReminderTools(server: McpServer, config: OrchardConfig): void {
   server.tool(
     "reminders.list_lists",
     "List all Apple Reminders lists with account name, color, and modification status.",
@@ -51,7 +62,12 @@ export function registerReminderTools(server: McpServer): void {
       }
       const data = await safeBridgeData(args, OPERATION_PROFILES.remindersRead);
       return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+        content: [
+          {
+            type: "text",
+            text: formatRemindersResponse(data, config.remindersMaxAgeDays),
+          },
+        ],
       };
     }
   );
@@ -66,7 +82,12 @@ export function registerReminderTools(server: McpServer): void {
         OPERATION_PROFILES.remindersRead
       );
       return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+        content: [
+          {
+            type: "text",
+            text: formatRemindersResponse(data, config.remindersMaxAgeDays),
+          },
+        ],
       };
     }
   );

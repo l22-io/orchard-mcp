@@ -14,32 +14,24 @@ if (process.argv[2] === "setup") {
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { registerCalendarTools } from "./tools/calendar.js";
-import { registerMailTools } from "./tools/mail.js";
-import { registerReminderTools } from "./tools/reminders.js";
-import { registerSystemTools } from "./tools/system.js";
-import { registerFileTools } from "./tools/files.js";
-import { registerNumbersTools } from "./tools/numbers.js";
-import { registerPagesTools } from "./tools/pages.js";
-import { registerKeynoteTools } from "./tools/keynote.js";
-import { registerNotesTools } from "./tools/notes.js";
-import { registerContactsTools } from "./tools/contacts.js";
+import { failConfig, loadConfig, logConfig } from "./config.js";
+import { registerEnabledTools } from "./registerTools.js";
+
+let config;
+try {
+  config = loadConfig();
+} catch (error) {
+  failConfig(error);
+}
+
+logConfig(config);
 
 const server = new McpServer({
   name: "orchard-mcp",
   version: packageJson.version,
 });
 
-registerCalendarTools(server);
-registerMailTools(server);
-registerReminderTools(server);
-registerSystemTools(server);
-registerFileTools(server);
-registerNumbersTools(server);
-registerPagesTools(server);
-registerKeynoteTools(server);
-registerNotesTools(server);
-registerContactsTools(server);
+registerEnabledTools(server, config);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);

@@ -2,20 +2,16 @@ import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { registerCalendarTools } from "../src/tools/calendar.js";
-import { registerMailTools } from "../src/tools/mail.js";
-import { registerReminderTools } from "../src/tools/reminders.js";
-import { registerSystemTools } from "../src/tools/system.js";
-import { registerFileTools } from "../src/tools/files.js";
-import { registerNumbersTools } from "../src/tools/numbers.js";
-import { registerPagesTools } from "../src/tools/pages.js";
-import { registerKeynoteTools } from "../src/tools/keynote.js";
-import { registerNotesTools } from "../src/tools/notes.js";
-import { registerContactsTools } from "../src/tools/contacts.js";
+import { ALL_MODULES, OrchardConfig } from "../src/config.js";
+import { registerEnabledTools } from "../src/registerTools.js";
 
 const packageJson = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8")
 ) as { version: string };
+
+const DEFAULT_CONFIG: OrchardConfig = {
+  enabledModules: ALL_MODULES,
+};
 
 const EXPECTED_TOOLS = [
   // Calendar (4)
@@ -95,26 +91,21 @@ const EXPECTED_TOOLS = [
   "contacts.read_contact",
 ];
 
+function registeredToolNames(server: McpServer): string[] {
+  const tools = (server as any)._registeredTools as Record<string, unknown>;
+  return Object.keys(tools);
+}
+
 describe("tool registration", () => {
   let server: McpServer;
 
   before(() => {
     server = new McpServer({ name: "orchard-mcp", version: packageJson.version });
-    registerCalendarTools(server);
-    registerMailTools(server);
-    registerReminderTools(server);
-    registerSystemTools(server);
-    registerFileTools(server);
-    registerNumbersTools(server);
-    registerPagesTools(server);
-    registerKeynoteTools(server);
-    registerNotesTools(server);
-    registerContactsTools(server);
+    registerEnabledTools(server, DEFAULT_CONFIG);
   });
 
   it("registers exactly 65 tools", () => {
-    const tools = (server as any)._registeredTools as Record<string, unknown>;
-    const names = Object.keys(tools);
+    const names = registeredToolNames(server);
     assert.equal(names.length, 65, `Expected 65 tools, got ${names.length}: ${names.join(", ")}`);
   });
 
@@ -124,4 +115,19 @@ describe("tool registration", () => {
       assert.ok(name in tools, `Tool "${name}" not registered`);
     });
   }
+
+  it("registers only enabled modules", () => {
+    const restrictedServer = new McpServer({
+      name: "orchard-mcp",
+      version: packageJson.version,
+    });
+    registerEnabledTools(restrictedServer, {
+      enabledModules: ["calendar", "system"],
+    });
+
+    const names = registeredToolNames(restrictedServer);
+    assert.equal(names.length, 5);
+    assert.ok(names.every((name) => name.startsWith("calendar.") || name.startsWith("system.")));
+    assert.ok(!names.some((name) => name.startsWith("mail.")));
+  });
 });
