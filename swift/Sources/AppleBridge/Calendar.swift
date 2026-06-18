@@ -203,14 +203,11 @@ enum CalendarBridge {
             return
         }
 
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-
-        guard var startDate = formatter.date(from: startISO) ?? parseFlexibleISO(startISO) else {
+        guard var startDate = parseDateISO(startISO) else {
             JSONOutput.error("Invalid start date: \(startISO). Use ISO 8601 format.")
             return
         }
-        guard var endDate = formatter.date(from: endISO) ?? parseFlexibleISO(endISO) else {
+        guard var endDate = parseDateISO(endISO) else {
             JSONOutput.error("Invalid end date: \(endISO). Use ISO 8601 format.")
             return
         }
@@ -304,6 +301,20 @@ enum CalendarBridge {
             dict["url"] = url.absoluteString
         }
         return dict
+    }
+
+    /// Parse an ISO 8601 date/datetime string in the broadest sensible set of formats.
+    /// Tries: fractional-seconds datetime → plain datetime → date-only.
+    private static func parseDateISO(_ str: String) -> Date? {
+        let withFrac = ISO8601DateFormatter()
+        withFrac.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = withFrac.date(from: str) { return d }
+
+        let noFrac = ISO8601DateFormatter()
+        noFrac.formatOptions = [.withInternetDateTime]
+        if let d = noFrac.date(from: str) { return d }
+
+        return parseFlexibleISO(str)
     }
 
     private static func parseFlexibleISO(_ str: String) -> Date? {
