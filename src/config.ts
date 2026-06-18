@@ -94,12 +94,17 @@ function parseMaxAgeDays(
 }
 
 function readConfigFile(path: string): ConfigFile {
+  let parsed: unknown;
   try {
-    return JSON.parse(readFileSync(path, "utf8")) as ConfigFile;
+    parsed = JSON.parse(readFileSync(path, "utf8"));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to read config file ${path}: ${message}`);
   }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new Error(`Failed to read config file ${path}: must be a JSON object, not ${parsed === null ? "null" : Array.isArray(parsed) ? "array" : typeof parsed}.`);
+  }
+  return parsed as ConfigFile;
 }
 
 function loadConfigFile(): ConfigFile {

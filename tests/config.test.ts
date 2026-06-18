@@ -127,4 +127,16 @@ describe("config loading", () => {
 
     assert.throws(() => loadConfig(), /Failed to read config file/);
   });
+
+  it("rejects config file that contains null instead of an object", () => {
+    writeFileSync(process.env.ORCHARD_MCP_CONFIG!, "null");
+
+    assert.throws(() => loadConfig(), /Failed to read config file.*null/);
+  });
+
+  it("rejects config file that contains a JSON array instead of an object", () => {
+    writeFileSync(process.env.ORCHARD_MCP_CONFIG!, '["calendar"]');
+
+    assert.throws(() => loadConfig(), /Failed to read config file.*array/);
+  });
 });
