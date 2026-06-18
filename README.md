@@ -117,6 +117,66 @@ Add to your MCP settings:
 {"command": "npx", "args": ["@l22-io/orchard-mcp"]}
 ```
 
+## Configuration
+
+By default, orchard-mcp exposes all 65 tools. You can restrict which modules are enabled
+and optionally limit how far back calendar events and completed reminders are returned.
+
+### Config file
+
+Create `~/.config/orchard-mcp/config.json`:
+
+```json
+{
+  "modules": ["calendar", "reminders", "files", "system"],
+  "calendarMaxAgeDays": 365,
+  "remindersMaxAgeDays": 90
+}
+```
+
+Override the file path with `ORCHARD_MCP_CONFIG`.
+
+If the file omits `modules`, all modules remain enabled. Disabled modules are not
+registered with MCP, so their tools cannot be listed or called.
+
+Age limits are optional:
+
+- **Calendar** (`list_events`, `today`, `search`): events whose `end` is before the
+  cutoff are omitted.
+- **Reminders** (`list_reminders`, `today`): completed reminders whose `completionDate`
+  is before the cutoff are omitted. Incomplete reminders (including overdue items) are
+  always returned.
+
+### Environment variables
+
+Set these in your MCP client's `"env"` block (they override the config file):
+
+| Variable | Purpose |
+|----------|---------|
+| `ORCHARD_MCP_CONFIG` | Custom config file path |
+| `ORCHARD_MCP_MODULES` | Comma-separated module list (e.g. `calendar,mail,files`) |
+| `ORCHARD_MCP_CALENDAR_MAX_AGE_DAYS` | Non-negative integer; unset = no limit |
+| `ORCHARD_MCP_REMINDERS_MAX_AGE_DAYS` | Non-negative integer; unset = no limit |
+
+Example for Claude Desktop or Cursor:
+
+```json
+{
+  "mcpServers": {
+    "orchard": {
+      "command": "npx",
+      "args": ["@l22-io/orchard-mcp"],
+      "env": {
+        "ORCHARD_MCP_MODULES": "calendar,reminders,files,system"
+      }
+    }
+  }
+}
+```
+
+Valid module names: `calendar`, `mail`, `reminders`, `files`, `system`, `numbers`,
+`pages`, `keynote`, `notes`, `contacts`.
+
 ## Available Tools
 
 ### Calendar

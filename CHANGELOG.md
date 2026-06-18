@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- **Module configuration.** Restrict which tool modules are exposed via `~/.config/orchard-mcp/config.json` or `ORCHARD_MCP_MODULES`. Disabled modules are not registered, so their tools cannot be listed or invoked. Default: all 10 modules enabled.
+- **Optional age limits.** `calendarMaxAgeDays` and `remindersMaxAgeDays` (config file or env) hide calendar events and completed reminders older than the cutoff. Incomplete overdue reminders are always returned.
+
 ## [0.6.3] - 2026-05-27
 
 ### Fixed

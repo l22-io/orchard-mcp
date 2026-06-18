@@ -1,9 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { requireNumbersRange } from "../resourceGuards.js";
+import { OrchardConfig } from "../config.js";
 import { OPERATION_PROFILES, safeBridgeData } from "../safety.js";
 
-export function registerNumbersTools(server: McpServer): void {
+export function registerNumbersTools(server: McpServer, _config: OrchardConfig): void {
   server.tool(
     "numbers.search",
     "Search for Numbers spreadsheet files by name or content.",
