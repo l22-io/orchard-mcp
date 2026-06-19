@@ -1,17 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { registerCalendarTools } from "../src/tools/calendar.js";
-import { registerContactsTools } from "../src/tools/contacts.js";
-import { registerFileTools } from "../src/tools/files.js";
-import { registerKeynoteTools } from "../src/tools/keynote.js";
-import { registerMailTools } from "../src/tools/mail.js";
-import { registerNotesTools } from "../src/tools/notes.js";
-import { registerNumbersTools } from "../src/tools/numbers.js";
-import { registerPagesTools } from "../src/tools/pages.js";
-import { registerReminderTools } from "../src/tools/reminders.js";
-import { registerSystemTools } from "../src/tools/system.js";
+import { createOrchardServer } from "../src/server.js";
 
 const repoRoot = new URL("../", import.meta.url);
 
@@ -26,17 +16,7 @@ const packageJson = JSON.parse(readRepoFile("package.json")) as {
 };
 
 function registeredToolCount(): number {
-  const server = new McpServer({ name: "orchard-mcp", version: packageJson.version });
-  registerCalendarTools(server);
-  registerMailTools(server);
-  registerReminderTools(server);
-  registerSystemTools(server);
-  registerFileTools(server);
-  registerNumbersTools(server);
-  registerPagesTools(server);
-  registerKeynoteTools(server);
-  registerNotesTools(server);
-  registerContactsTools(server);
+  const server = createOrchardServer();
   return Object.keys((server as any)._registeredTools as Record<string, unknown>).length;
 }
 
@@ -51,9 +31,9 @@ describe("metadata stays in sync", () => {
   });
 
   it("uses package.json as the TypeScript server version source", () => {
-    const index = readRepoFile("src/index.ts");
-    assert.match(index, /version:\s*packageJson\.version/);
-    assert.doesNotMatch(index, /version:\s*["']\d+\.\d+\.\d+["']/);
+    const server = readRepoFile("src/server.ts");
+    assert.match(server, /version:\s*packageJson\.version/);
+    assert.doesNotMatch(server, /version:\s*["']\d+\.\d+\.\d+["']/);
   });
 
   it("keeps Swift bridge versions aligned with package.json", () => {

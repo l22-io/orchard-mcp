@@ -36,9 +36,9 @@ AppleScript/JXA starts.
 
 Examples:
 
-- `mail.save_attachment` requires `account` and `mailbox` from a recent Mail result.
-- Notes body/all search is refused; use title search, then `notes.read_note`.
-- `numbers.read` and `numbers.get_formulas` require a cell range.
+- `mail_save_attachment` requires `account` and `mailbox` from a recent Mail result.
+- Notes body/all search is refused; use title search, then `notes_read_note`.
+- `numbers_read` and `numbers_get_formulas` require a cell range.
 - PNG/JPEG Keynote export requires a single slide index.
 - Calendar list/search ranges are capped at 31 days.
 
@@ -119,100 +119,102 @@ Add to your MCP settings:
 
 ## Available Tools
 
+Tool names use underscores for Claude Desktop Chat compatibility.
+
 ### Calendar
 
-- `calendar.list_calendars` - List all calendars with account, type, color
-- `calendar.list_events` - Events in a date range (recurring events expanded)
-- `calendar.today` - Today's events across all calendars
-- `calendar.search` - Search events by title, notes, or location
+- `calendar_list_calendars` - List all calendars with account, type, color
+- `calendar_list_events` - Events in a date range (recurring events expanded)
+- `calendar_today` - Today's events across all calendars
+- `calendar_search` - Search events by title, notes, or location
 
 ### Mail
 
-- `mail.list_accounts` - List mail accounts with a bounded mailbox-name sample; use `mail.unread_summary` for unread counts
-- `mail.unread_summary` - Unread count per account with recent message headers
-- `mail.search` - Search messages by subject, sender, body, or all fields with pagination
-- `mail.read_message` - Get message content by ID with configurable body truncation; pass account/mailbox locators when available
-- `mail.flagged` - List flagged messages across all accounts with pagination
-- `mail.create_draft` - Create a draft email in Mail.app for review
-- `mail.save_attachment` - Save an email attachment to disk by message ID, index, account, and mailbox
+- `mail_list_accounts` - List mail accounts with a bounded mailbox-name sample; use `mail_unread_summary` for unread counts
+- `mail_unread_summary` - Unread count per account with recent message headers
+- `mail_search` - Search messages by subject, sender, body, or all fields with pagination
+- `mail_read_message` - Get message content by ID with configurable body truncation; pass account/mailbox locators when available
+- `mail_flagged` - List flagged messages across all accounts with pagination
+- `mail_create_draft` - Create a draft email in Mail.app for review
+- `mail_save_attachment` - Save an email attachment to disk by message ID, index, account, and mailbox
 
 ### Reminders
 
-- `reminders.list_lists` - List all reminder lists with account, color, item count
-- `reminders.list_reminders` - Reminders from a list with filters
-- `reminders.today` - Incomplete reminders due today plus overdue reminders
-- `reminders.create_list` - Create a new reminder list
-- `reminders.create_reminder` - Create a reminder with optional due date, priority, notes
-- `reminders.complete_reminder` - Mark a reminder as completed
-- `reminders.delete_reminder` - Delete a reminder
-- `reminders.delete_list` - Delete a reminder list
+- `reminders_list_lists` - List all reminder lists with account, color, item count
+- `reminders_list_reminders` - Reminders from a list with filters
+- `reminders_today` - Incomplete reminders due today plus overdue reminders
+- `reminders_create_list` - Create a new reminder list
+- `reminders_create_reminder` - Create a reminder with optional due date, priority, notes
+- `reminders_complete_reminder` - Mark a reminder as completed
+- `reminders_delete_reminder` - Delete a reminder
+- `reminders_delete_list` - Delete a reminder list
 
 ### Files
 
-- `files.list` - List directory contents with metadata
-- `files.info` - Get detailed file metadata including Spotlight attributes
-- `files.search` - Search files using macOS Spotlight
-- `files.read` - Read or extract text from plain text, PDF, images, `.docx`, `.rtf`, `.pages`
-- `files.move` - Move or rename files and folders, including batch operations
-- `files.copy` - Copy a file or folder
-- `files.create_folder` - Create a new directory
-- `files.trash` - Move a file or folder to Trash
+- `files_list` - List directory contents with metadata
+- `files_info` - Get detailed file metadata including Spotlight attributes
+- `files_search` - Search files using macOS Spotlight
+- `files_read` - Read or extract text from plain text, PDF, images, `.docx`, `.rtf`, `.pages`
+- `files_move` - Move or rename files and folders, including batch operations
+- `files_copy` - Copy a file or folder
+- `files_create_folder` - Create a new directory
+- `files_trash` - Move a file or folder to Trash
 
 ### System
 
-- `system.doctor` - Check permissions and list accessible accounts/apps
+- `system_doctor` - Check permissions and list accessible accounts/apps
 
 ### Numbers
 
-- `numbers.search` - Find Numbers spreadsheets with Spotlight
-- `numbers.read` - Read table data from a spreadsheet within a required cell range
-- `numbers.write` - Write table data to a spreadsheet
-- `numbers.create` - Create a new spreadsheet
-- `numbers.list_sheets` - List sheets and tables
-- `numbers.add_sheet` - Add a sheet
-- `numbers.remove_sheet` - Remove a sheet
-- `numbers.get_formulas` - Read formulas within a required cell range
-- `numbers.export` - Export as CSV, PDF, or XLSX
-- `numbers.info` - Inspect spreadsheet metadata
+- `numbers_search` - Find Numbers spreadsheets with Spotlight
+- `numbers_read` - Read table data from a spreadsheet within a required cell range
+- `numbers_write` - Write table data to a spreadsheet
+- `numbers_create` - Create a new spreadsheet
+- `numbers_list_sheets` - List sheets and tables
+- `numbers_add_sheet` - Add a sheet
+- `numbers_remove_sheet` - Remove a sheet
+- `numbers_get_formulas` - Read formulas within a required cell range
+- `numbers_export` - Export as CSV, PDF, or XLSX
+- `numbers_info` - Inspect spreadsheet metadata
 
 ### Pages
 
-- `pages.search` - Find Pages documents with Spotlight
-- `pages.read` - Read document text
-- `pages.write` - Replace document text
-- `pages.create` - Create a new document
-- `pages.find_replace` - Find and replace text
-- `pages.insert_table` - Insert table data
-- `pages.list_sections` - List document sections
-- `pages.export` - Export as PDF, DOCX, TXT, or EPUB
-- `pages.info` - Inspect document metadata
+- `pages_search` - Find Pages documents with Spotlight
+- `pages_read` - Read document text
+- `pages_write` - Replace document text
+- `pages_create` - Create a new document
+- `pages_find_replace` - Find and replace text
+- `pages_insert_table` - Insert table data
+- `pages_list_sections` - List document sections
+- `pages_export` - Export as PDF, DOCX, TXT, or EPUB
+- `pages_info` - Inspect document metadata
 
 ### Keynote
 
-- `keynote.search` - Find Keynote decks with Spotlight
-- `keynote.read` - Read slide content
-- `keynote.create` - Create a new deck
-- `keynote.add_slide` - Add a slide
-- `keynote.edit_slide` - Edit slide title, body, or notes
-- `keynote.remove_slide` - Remove a slide
-- `keynote.reorder_slides` - Move slides
-- `keynote.list_slides` - List slides
-- `keynote.list_themes` - List available themes
-- `keynote.export` - Export as PDF, PPTX, PNG, or JPEG; PNG/JPEG requires a slide index
-- `keynote.info` - Inspect deck metadata
+- `keynote_search` - Find Keynote decks with Spotlight
+- `keynote_read` - Read slide content
+- `keynote_create` - Create a new deck
+- `keynote_add_slide` - Add a slide
+- `keynote_edit_slide` - Edit slide title, body, or notes
+- `keynote_remove_slide` - Remove a slide
+- `keynote_reorder_slides` - Move slides
+- `keynote_list_slides` - List slides
+- `keynote_list_themes` - List available themes
+- `keynote_export` - Export as PDF, PPTX, PNG, or JPEG; PNG/JPEG requires a slide index
+- `keynote_info` - Inspect deck metadata
 
 ### Notes
 
-- `notes.list_folders` - List Notes folders
-- `notes.list_notes` - List notes with optional folder filtering
-- `notes.search` - Search notes by title; body/all search is refused for app safety
-- `notes.read_note` - Read a note by ID
+- `notes_list_folders` - List Notes folders
+- `notes_list_notes` - List notes with optional folder filtering
+- `notes_search` - Search notes by title; body/all search is refused for app safety
+- `notes_read_note` - Read a note by ID
 
 ### Contacts
 
-- `contacts.list_groups` - List contact groups
-- `contacts.search` - Search contacts
-- `contacts.read_contact` - Read full contact details by ID
+- `contacts_list_groups` - List contact groups
+- `contacts_search` - Search contacts
+- `contacts_read_contact` - Read full contact details by ID
 
 ## Architecture
 

@@ -1,121 +1,106 @@
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { registerCalendarTools } from "../src/tools/calendar.js";
-import { registerMailTools } from "../src/tools/mail.js";
-import { registerReminderTools } from "../src/tools/reminders.js";
-import { registerSystemTools } from "../src/tools/system.js";
-import { registerFileTools } from "../src/tools/files.js";
-import { registerNumbersTools } from "../src/tools/numbers.js";
-import { registerPagesTools } from "../src/tools/pages.js";
-import { registerKeynoteTools } from "../src/tools/keynote.js";
-import { registerNotesTools } from "../src/tools/notes.js";
-import { registerContactsTools } from "../src/tools/contacts.js";
+import { createOrchardServer } from "../src/server.js";
 
-const packageJson = JSON.parse(
-  readFileSync(new URL("../package.json", import.meta.url), "utf8")
-) as { version: string };
+const FRONTEND_TOOL_NAME_PATTERN = /^[a-zA-Z0-9_-]{1,64}$/;
 
 const EXPECTED_TOOLS = [
   // Calendar (4)
-  "calendar.list_calendars",
-  "calendar.list_events",
-  "calendar.today",
-  "calendar.search",
+  "calendar_list_calendars",
+  "calendar_list_events",
+  "calendar_today",
+  "calendar_search",
   // Mail (7)
-  "mail.list_accounts",
-  "mail.unread_summary",
-  "mail.search",
-  "mail.read_message",
-  "mail.create_draft",
-  "mail.flagged",
-  "mail.save_attachment",
+  "mail_list_accounts",
+  "mail_unread_summary",
+  "mail_search",
+  "mail_read_message",
+  "mail_create_draft",
+  "mail_flagged",
+  "mail_save_attachment",
   // Reminders (8)
-  "reminders.list_lists",
-  "reminders.list_reminders",
-  "reminders.today",
-  "reminders.create_list",
-  "reminders.create_reminder",
-  "reminders.complete_reminder",
-  "reminders.delete_reminder",
-  "reminders.delete_list",
+  "reminders_list_lists",
+  "reminders_list_reminders",
+  "reminders_today",
+  "reminders_create_list",
+  "reminders_create_reminder",
+  "reminders_complete_reminder",
+  "reminders_delete_reminder",
+  "reminders_delete_list",
   // Files (8)
-  "files.list",
-  "files.info",
-  "files.search",
-  "files.read",
-  "files.move",
-  "files.copy",
-  "files.create_folder",
-  "files.trash",
+  "files_list",
+  "files_info",
+  "files_search",
+  "files_read",
+  "files_move",
+  "files_copy",
+  "files_create_folder",
+  "files_trash",
   // System (1)
-  "system.doctor",
+  "system_doctor",
   // Numbers (10)
-  "numbers.search",
-  "numbers.read",
-  "numbers.write",
-  "numbers.create",
-  "numbers.list_sheets",
-  "numbers.add_sheet",
-  "numbers.remove_sheet",
-  "numbers.get_formulas",
-  "numbers.export",
-  "numbers.info",
+  "numbers_search",
+  "numbers_read",
+  "numbers_write",
+  "numbers_create",
+  "numbers_list_sheets",
+  "numbers_add_sheet",
+  "numbers_remove_sheet",
+  "numbers_get_formulas",
+  "numbers_export",
+  "numbers_info",
   // Pages (9)
-  "pages.search",
-  "pages.read",
-  "pages.write",
-  "pages.create",
-  "pages.find_replace",
-  "pages.insert_table",
-  "pages.list_sections",
-  "pages.export",
-  "pages.info",
+  "pages_search",
+  "pages_read",
+  "pages_write",
+  "pages_create",
+  "pages_find_replace",
+  "pages_insert_table",
+  "pages_list_sections",
+  "pages_export",
+  "pages_info",
   // Keynote (11)
-  "keynote.search",
-  "keynote.read",
-  "keynote.create",
-  "keynote.add_slide",
-  "keynote.edit_slide",
-  "keynote.remove_slide",
-  "keynote.reorder_slides",
-  "keynote.list_slides",
-  "keynote.list_themes",
-  "keynote.export",
-  "keynote.info",
+  "keynote_search",
+  "keynote_read",
+  "keynote_create",
+  "keynote_add_slide",
+  "keynote_edit_slide",
+  "keynote_remove_slide",
+  "keynote_reorder_slides",
+  "keynote_list_slides",
+  "keynote_list_themes",
+  "keynote_export",
+  "keynote_info",
   // Notes (4)
-  "notes.list_folders",
-  "notes.list_notes",
-  "notes.search",
-  "notes.read_note",
+  "notes_list_folders",
+  "notes_list_notes",
+  "notes_search",
+  "notes_read_note",
   // Contacts (3)
-  "contacts.list_groups",
-  "contacts.search",
-  "contacts.read_contact",
+  "contacts_list_groups",
+  "contacts_search",
+  "contacts_read_contact",
 ];
 
 describe("tool registration", () => {
   let server: McpServer;
 
   before(() => {
-    server = new McpServer({ name: "orchard-mcp", version: packageJson.version });
-    registerCalendarTools(server);
-    registerMailTools(server);
-    registerReminderTools(server);
-    registerSystemTools(server);
-    registerFileTools(server);
-    registerNumbersTools(server);
-    registerPagesTools(server);
-    registerKeynoteTools(server);
-    registerNotesTools(server);
-    registerContactsTools(server);
+    server = createOrchardServer();
   });
 
   it("registers exactly 65 tools", () => {
     const tools = (server as any)._registeredTools as Record<string, unknown>;
     const names = Object.keys(tools);
     assert.equal(names.length, 65, `Expected 65 tools, got ${names.length}: ${names.join(", ")}`);
+  });
+
+  it("uses Claude Desktop Chat-compatible tool names", () => {
+    const tools = (server as any)._registeredTools as Record<string, unknown>;
+    for (const name of Object.keys(tools)) {
+      assert.match(name, FRONTEND_TOOL_NAME_PATTERN);
+    }
   });
 
   for (const name of EXPECTED_TOOLS) {
